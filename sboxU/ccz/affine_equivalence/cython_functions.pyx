@@ -172,22 +172,34 @@ def affine_equivalence_permutations(f, g):
         raise Exception("first argument is not a permutation!")
     if not sg.is_invertible():
         raise Exception("second argument is not a permutation!")
-    table = defaultdict(int)
-    n= sf.get_input_length()
-    tr = [F2_trans(c,bit_length = n) for c in sf.input_space()] # translations
-    translations = [tr[c] * sf for c in sf.input_space()]
-    reps = compute_all_le_reps_parallel(translations)
-    for i, rep in enumerate(reps):
-        table[rep] = i
-    rs = []
+    # Setup translations
+    n = sf.get_input_length()
+    tr = [F2_trans(c, bit_length=n) for c in sf.input_space()]
+
+    # Incremental hash table with early exit
+    table_f = defaultdict(int)  # rep -> c for f
+    table_g = defaultdict(int)  # rep -> c for g
     a = -1
     b = -1
+    rs = []
     for c in sf.input_space():
-        g_c = le_class_representative(sg * tr[c])
-        if g_c in table.keys():
-            a=c
-            b = table[g_c]
-            rs = g_c
+        f_c = tr[c] * sf
+        g_c = sg * tr[c]
+        f_rep = le_class_representative(f_c)
+        g_rep = le_class_representative(g_c)
+        # Add f_rep to its table and check if g_rep matches any f_rep
+        table_f[f_rep] = c
+        if g_rep in table_f:
+            a = c
+            b = table_f[g_rep]
+            rs = g_rep
+            break
+        # Add g_rep to its table and check if f_rep matches any g_rep
+        table_g[g_rep] = c
+        if f_rep in table_g:
+            a = table_g[f_rep]
+            b = c
+            rs = f_rep
             break
     if a == -1:
         return []

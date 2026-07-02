@@ -1,8 +1,8 @@
 # Optimization Strategy — Affine Equivalence Speed
 
 ## Current State
-- **Best total_time_ms**: 2270.893 (after LTO)
-- **Iteration count**: 2
+- **Best total_time_ms**: 2155.726 (after early exit optimization)
+- **Iteration count**: 3
 
 ## Bottleneck Analysis
 | Benchmark | Value (ms) | % of total | Priority |
@@ -23,7 +23,6 @@ Improvements must exceed 2σ noise band to be considered real.
 ## Ideas to Try (priority order)
 
 ### C++ algorithmic optimizations
-1. **Early exit in affine_equivalence_permutations** — The Python loop over all 256 translations could return early once a matching representative is found. Currently, it iterates all 256 before breaking.
 2. **Replace dict with hash table** — Replace Python `defaultdict` and `dict.keys()` with C++ `std::unordered_map` to avoid Python overhead.
 4. **Pre-check trivial cases** — Check if f(0)=0 and g(0)=0 early to skip translations.
 5. **Reduce memory allocations** — In the subroutine, vectors and sets are allocated each call. Pre-allocate or use arena allocators.
@@ -59,3 +58,5 @@ Improvements must exceed 2σ noise band to be considered real.
 - The C++ subroutine is a backtracking search; pruning and early termination have big impact
 - 256-bit AVX2 registers can hold exactly one 8-bit S-box domain (256 bits) — perfectly sized for SIMD
 - OpenMP already enabled via compile flags but not used in the linear_representative.cpp code
+
+19. **Early exit interleaved hash tables** — KEEP. Reason: Interleaving f/g representatives with symmetric hash tables enables early exit. Total time improved 5.07% vs baseline LTO (2155.7 ms vs 2270.9 ms). Self-equivalence benchmarks now require only 2 le_class_representative calls vs 512. Tradeoff: worst-case non-equivalent slower due to loss of OpenMP parallelism. Added complexity moderate.
