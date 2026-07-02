@@ -1,4 +1,5 @@
 #include "./linear_equivalence.hpp"
+#include <unordered_map>
 
 
 
@@ -36,7 +37,7 @@ std::vector<IOpair> LEguess::add_entry(const IOpair e)
         is_set[x] = true;
         // propagating new value
         latest_entries.clear();
-        std::map<BinWord, bool> previously_set(is_set);
+        std::unordered_map<BinWord, bool> previously_set = is_set;
         for (auto & entry : previously_set)
             if (entry.second)
             {

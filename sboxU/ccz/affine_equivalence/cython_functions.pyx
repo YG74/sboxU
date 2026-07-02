@@ -6,6 +6,7 @@ from sboxU.core import get_sbox, oplus
 from sboxU.core.sbox import F2_trans
 from sboxU.config import MAX_N_THREADS
 from collections import defaultdict
+from sboxU.statistics import differential_spectrum
 
 
 from cython.operator cimport dereference
@@ -162,16 +163,28 @@ def affine_equivalence_permutations(f, g):
 
     """
 
-
     sf = get_sbox(f)
     sg = get_sbox(g)
-    
+
     if len(f) != len(g):
         raise ValueError("f and g are of different dimensions!")
     if not sf.is_invertible():
         raise Exception("first argument is not a permutation!")
     if not sg.is_invertible():
         raise Exception("second argument is not a permutation!")
+
+    # Quick filter: differential spectrum is an affine invariant for permutations
+    # If the differential spectra differ, f and g cannot be affine equivalent.
+    # This avoids running the expensive full algorithm for most non-equivalent pairs.
+    try:
+        ds_f = differential_spectrum(sf)
+        ds_g = differential_spectrum(sg)
+        # Compare as dicts because Spectrum.__eq__ is unreliable
+        if dict(ds_f) != dict(ds_g):
+            return []
+    except Exception:
+        # If differential_spectrum fails for any reason, fall back to full algorithm
+        pass
     # Setup translations
     n = sf.get_input_length()
     tr = [F2_trans(c, bit_length=n) for c in sf.input_space()]

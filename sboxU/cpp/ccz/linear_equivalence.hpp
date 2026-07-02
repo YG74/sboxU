@@ -2,6 +2,7 @@
 #define _CCZ_LINEAR_EQUIVALENCE_
 
 #include "./linear_representative.hpp"
+#include <unordered_map>
 
 
 std::vector<cpp_F2AffineMap> cpp_linear_equivalence_permutations(
@@ -38,13 +39,13 @@ class LEguess
 {
 private:
     unsigned int target_size;
-    std::map<BinWord, BinWord> partial_lut;
+    std::unordered_map<BinWord, BinWord> partial_lut;
     std::vector<IOpair> latest_entries;
     unsigned int min_unset;
 public:
     LEguess(const unsigned int _target_size);
     ~LEguess();
-    std::map<BinWord, bool> is_set;
+    std::unordered_map<BinWord, bool> is_set;
     std::vector<IOpair> add_entry(const IOpair e);
     bool is_entry_set(const BinWord x);
     unsigned int min_u();

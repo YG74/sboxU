@@ -1,0 +1,29 @@
+Preparing data...
+Traceback (most recent call last):
+  File "/home/gleb/sboxU/benchmark.py", line 243, in <module>
+    results, total, ok = run_all(verify=verify, save_baseline=save)
+                         ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/gleb/sboxU/benchmark.py", line 165, in run_all
+    data = prepare_data()
+  File "/home/gleb/sboxU/benchmark.py", line 124, in prepare_data
+    affine_equivalence, get_sbox = _import_sboxu()
+                                   ~~~~~~~~~~~~~^^
+  File "/home/gleb/sboxU/benchmark.py", line 47, in _import_sboxu
+    from sboxU.ccz import affine_equivalence
+  File "/home/gleb/sboxU/sboxU/__init__.py", line 11, in <module>
+    from sboxU.core import *
+  File "/home/gleb/sboxU/sboxU/core/__init__.py", line 6, in <module>
+    from sboxU.core.sbox import *
+  File "/home/gleb/sboxU/sboxU/core/sbox/__init__.py", line 9, in <module>
+    from sboxU.core.sbox.cython_functions import \
+    ...<2 lines>...
+        F2_trans, identity_S_box
+  File "sboxU/core/sbox/cython_functions.pyx", line 1, in init sboxU.core.sbox.cython_functions
+    # -*- python -*-
+  File "/home/gleb/sboxU/sboxU/core/f2functions/__init__.py", line 7, in <module>
+    from sboxU.core.f2functions.cython_functions import \
+    ...<5 lines>...
+        identity_F2AffineMap, zero_F2AffineMap, block_diagonal_F2AffineMap,circ_shift_F2AffineMap,bit_permutation_F2AffineMap, F2AffineMap_from_blocks
+  File "sboxU/core/f2functions/cython_functions.pyx", line 3, in init sboxU.core.f2functions.cython_functions
+    from sage.all import Matrix, GF, Polynomial,vector
+ModuleNotFoundError: No module named 'sage'
