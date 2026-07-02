@@ -1,15 +1,15 @@
 # Optimization Strategy — Affine Equivalence Speed
 
 ## Current State
-- **Best total_time_ms**: 0.317 (after incremental differential spectrum comparison)
-- **Iteration count**: 30
+- **Best total_time_ms**: 0.300 (after fast path byte comparison)
+- **Iteration count**: 31
 
 ## Bottleneck Analysis
 | Benchmark | Value (ms) | % of total | Priority |
 |---|---|---|---|
-| aes_self | 0.185 | 58.3% | HIGH |
-| random_self | 0.127 | 40.0% | MEDIUM |
-| random_nonequiv | 0.006 | 1.7% | LOW |
+| aes_self | 0.168 | 56.0% | HIGH |
+| random_self | 0.124 | 41.3% | MEDIUM |
+| random_nonequiv | 0.009 | 3.0% | LOW |
 
 ## Variance Profile
 | Benchmark | Median | Std Dev | Noise Band (±2σ) |
@@ -32,6 +32,7 @@ Improvements must exceed 2σ noise band to be considered real.
 ### Algorithmic improvements
 9. **Caching linear representatives** — Many translations may produce the same linear class representative. Cache results to avoid recomputation. (Tried, not helpful.)
 10. **Memory layout** — Rearrange data for better cache locality in the backtracking search.
+11. **Fast path via object identity** — Add `if sf is sg` before `to_bytes()` comparison to avoid C++ call for identical Python objects.
 
 ### Compiler optimizations
 
@@ -70,6 +71,12 @@ Improvements must exceed 2σ noise band to be considered real.
 82. **Spectrum equality optimization** — DISCARD. Added `__eq__` method to Cython Spectrum class to replace dict conversions in differential spectrum filter, reducing Python overhead. Total time: 0.467 ms vs 0.462 ms baseline (+1.08% regression). Components: aes_self +2.98%, random_self +5.74%, random_nonequiv -3.49%. Correctness PASS. Within noise, random_self regressed >5%. Minimal complexity. Correctness preserved.
 
 83. **Incremental differential spectrum comparison** — KEEP. Replaced two separate `differential_spectrum` calls with an incremental comparison that loops over delta values and compares partial histograms early. When spectra differ (almost all non-equivalent pairs), exits after a few deltas, saving the rest of the computation. Total time improved from 0.462 ms → 0.317 ms. random_nonequiv dropped from 0.172 ms → 0.006 ms (96.5% reduction). The small overhead for equivalent pairs (one sequential pass) is acceptable because self-equivalence is fast-pathed before reaching this filter. Added complexity: new C++ function and Cython wrapper. Correctness preserved.
+
+84. **Fast path byte comparison** — KEEP. Replaced `sf == sg` with `sf.to_bytes() == sg.to_bytes()` in `affine_equivalence_permutations` to avoid Python loop over 256 elements. Total time improved from 0.317 ms → 0.300 ms (5.4% improvement). All benchmarks passed. Added complexity: none. Correctness preserved.
+
+85. **Stack-allocated count buffers in differential spectrum compare** — DISCARD. Attempting to eliminate heap allocations in `cpp_differential_spectrum_compare` by using fixed-size arrays and `memset`. The extra overhead from clearing 1KB arrays and duplicate iterations more than offset any allocation savings, causing total time to increase from 0.300 ms to 0.317 ms (5.7% regression). The `aes_self` benchmark regressed by 8.3%. Correctness preserved. Added complexity: manual DDT row building and histogram construction. Reason: the original vector-based approach is already efficient for the small counts involved.
+
+86. **Memoize get_sbox for list inputs** — DISCARD. Added a global cache in `get_sbox` to avoid rebuilding the same S-box from a list. Total time: 0.293 ms vs 0.300 ms (-2.3%). All benchmarks improved slightly, but net improvement is modest and within measurement noise. Added complexity: global cache state, potential memory growth if many different lists are used. Correctness preserved.
 
 ## Exhausted Approaches
 - **Memory allocation reduction in subroutine** — Tried pre-allocation with `reserve()`, stack buffers, and arena allocators. All regressed due to overhead or complexity.
