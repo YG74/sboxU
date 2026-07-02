@@ -4,7 +4,7 @@
 - **Best total_time_ms**: 0.300 (after fast path byte comparison)
 - **Best commit**: `a59f13ee9775e630900a8fc13beaa603b99a89b9`
 - **Iteration count**: 41
-- **Experiments logged**: 34 (18 kept, 16 discarded, 0 crashed)
+- **Experiments logged**: 35 (19 kept, 16 discarded, 0 crashed)
 - **Overall speedup**: 2720.7 ms → 0.300 ms (≈99.99%)
 
 ## Bottleneck Analysis
@@ -62,6 +62,7 @@ Improvements must exceed 2σ noise band to be considered real.
 17. **Fast path byte comparison** — KEEP. Replaced `sf == sg` with `sf.to_bytes() == sg.to_bytes()` to avoid Python loop. Total time improved from 0.317 ms → 0.300 ms (5.4%). Current best.
 
 18. **Identity check before bytestring comparison** — KEEP. Added `sf is sg` check before `to_bytes()` to avoid allocation for same-object calls. Total time 0.303 ms (within ±0.02 ms noise band; no significant change vs baseline). Correctness PASS.
+19. **Reduce redundant is_invertible calls** — KEEP. Combined `is_invertible` checks in `affine_equivalence` into a single OR condition and removed duplicate checks in `affine_equivalence_permutations`. Total time 0.304 ms (within ±0.02 ms noise band vs best 0.300 ms). Correctness PASS.
 
 ## Discarded Ideas
 
