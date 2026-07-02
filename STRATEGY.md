@@ -83,6 +83,8 @@ Improvements must exceed 2σ noise band to be considered real.
 
 80. **Early exit for self-equivalence** — KEEP. Added fast path in `affine_equivalence_permutations` in `sboxU/ccz/affine_equivalence/cython_functions.pyx`: if f == g, return identity mapping immediately. This avoids the entire 256-translation and linear-equivalence computation for the common self-equivalence case. Total time dropped from 16.553 ms → 0.462 ms (97.2% improvement). All benchmarks improved: aes_self -98.8%, random_self -97.9%, random_nonequiv -20.4%. Correctness preserved. Added complexity: minimal, just a fast path check.
 
+82. **Spectrum equality optimization** — DISCARD. Added `__eq__` method to Cython Spectrum class to replace dict conversions in differential spectrum filter, reducing Python overhead. Total time: 0.467 ms vs 0.462 ms baseline (+1.08% regression). Components: aes_self +2.98%, random_self +5.74%, random_nonequiv -3.49%. Correctness PASS. Within noise, random_self regressed >5%. Minimal complexity. Correctness preserved.
+
 ## Exhausted Approaches
 (none yet)
 
