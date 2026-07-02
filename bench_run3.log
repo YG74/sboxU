@@ -1,0 +1,30 @@
+Preparing data...
+Running 3 benchmarks x 3 runs.
+
+  aes_self run 1/3: 115.1ms
+  aes_self run 2/3: 67.1ms
+  aes_self run 3/3: 43.6ms
+  -> aes_self median: 67118 us
+
+  random_self run 1/3: 12.1ms
+  random_self run 2/3: 8.8ms
+  random_self run 3/3: 8.8ms
+  -> random_self median: 8812 us
+
+  random_nonequiv run 1/3: 0.8ms
+  random_nonequiv run 2/3: 0.7ms
+  random_nonequiv run 3/3: 0.8ms
+  -> random_nonequiv median: 782 us
+
+
+=== CORRECTNESS ===
+  aes_self: PASS
+  random_self: PASS
+  random_nonequiv: PASS
+
+---
+total_time_ms:          76.712
+aes_self_ms                   67.118
+random_self_ms                8.812
+random_nonequiv_ms            0.782
+correctness:              PASS

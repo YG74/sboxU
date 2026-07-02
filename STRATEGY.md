@@ -1,8 +1,8 @@
 # Optimization Strategy — Affine Equivalence Speed
 
 ## Current State
-- **Best total_time_ms**: 114.638 (after adding differential spectrum filter)
-- **Iteration count**: 7
+- **Best total_time_ms**: 76.712 (after arrays in tstate_t for 256-bit sets)
+- **Iteration count**: 9
 
 ## Bottleneck Analysis
 | Benchmark | Value (ms) | % of total | Priority |
@@ -43,7 +43,8 @@ Improvements must exceed 2σ noise band to be considered real.
 ### Algorithmic improvements
 9. **Caching linear representatives** — Many translations may produce the same linear class representative. Cache results to avoid recomputation. (Tried, not helpful.)
 10. **Memory layout** — Rearrange data for better cache locality in the backtracking search.
-11. **More aggressive pruning** — The `is_greater` check in `subroutine` could prune earlier to reduce search space.
+
+### Compiler optimizations
 
 ### Compiler optimizations
 12. **Profile-guided optimization** — Build with -fprofile-generate, run benchmarks, rebuild with -fprofile-use.
@@ -63,8 +64,13 @@ Improvements must exceed 2σ noise band to be considered real.
 
 22. **Replace is_set with unordered_map** — KEEP. Changed `is_set` from `std::map` to `std::unordered_map` in `LEguess`. Total time dropped from 2150.331 ms to 816.405 ms (62% reduction). AES self-equivalence fell by 77.8% (1928 → 43 ms), random_self by 79.0% (254 → 5.3 ms), random_nonequiv changed from 539 → 767 ms (regression, may be noise). Correctness passed (same checksum). Reason: `is_set` was the last O(log n) structure; switching to unordered_map eliminated log factor in lookups and iteration. Order no longer guaranteed, but propagation remains associative and final result identical.
 65. **Inline frequently-used Set operations** — DISCARD. Applied `__attribute__((always_inline))` to all Set methods to force inlining. Caused severe 30% regression (1058.4 ms vs 816.4 ms) due to instruction cache pressure from code bloat, especially the large `shift` implementation. Correctness preserved.
+66. **Differential spectrum filter** — KEEP. In `affine_equivalence_permutations`, compute DDT spectra of f and g early; if they differ, return [] immediately. This is correct because the multiset of DDT entries is an affine invariant for permutations. Result: total time dropped from 816.4 ms to 114.6 ms (85% improvement). random_nonequiv fell from 767.8 ms to 4.0 ms. Trade-off: equivalent pairs (aes_self, random_self) now pay ~80–90 ms overhead for the filter, making them ~2–3× slower. However, the huge win on the dominant non-equivalent case more than compensates. Added complexity: one extra Python import and dict conversion comparison; minimal. Correctness preserved.
+68. **Pre-allocate get_elements vector capacity** — DISCARD. Reason: Added reserve() to vectors in get_elements to avoid reallocation overhead. Performance was highly variable (53–105 ms range) and median 92.4 ms, significantly worse than current best 57.1 ms. Added minimal complexity but no reliable improvement. Correctness preserved.
+71. **More aggressive pruning** — KEEP. Added pre-recursion check in `subroutine` to skip branches where partial R_S is already lexicographically greater than best. Total time improved by 16.3% (70.242 ms → 58.845 ms). AES self-equivalence improved by 25.7% (63.7 ms → 47.4 ms), but random_self regressed by 34.6% (5.8 ms → 7.8 ms) and random_nonequiv regressed by 393% (0.7 ms → 3.7 ms). The net improvement in total time justifies keeping, as aes_self dominates. Reason: reduces wasted recursion; correctness preserved.`
 
 66. **Differential spectrum filter** — KEEP. In `affine_equivalence_permutations`, compute DDT spectra of f and g early; if they differ, return [] immediately. This is correct because the multiset of DDT entries is an affine invariant for permutations. Result: total time dropped from 816.4 ms to 114.6 ms (85% improvement). random_nonequiv fell from 767.8 ms to 4.0 ms. Trade-off: equivalent pairs (aes_self, random_self) now pay ~80–90 ms overhead for the filter, making them ~2–3× slower. However, the huge win on the dominant non-equivalent case more than compensates. Added complexity: one extra Python import and dict conversion comparison; minimal. Correctness preserved.
+
+68. **Pre-allocate get_elements vector capacity** — DISCARD. Reason: Added reserve() to vectors in get_elements to avoid reallocation overhead. Performance was highly variable (53–105 ms range) and median 92.4 ms, significantly worse than current best 57.1 ms. Added minimal complexity but no reliable improvement. Correctness preserved.
 
 ## Exhausted Approaches
 (none yet)

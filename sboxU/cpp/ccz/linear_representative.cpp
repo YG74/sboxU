@@ -1086,6 +1086,9 @@ template<typename set_t, typename int_type> bool subroutine(const std::vector<in
             state_next.U_A = U_A;
             state_next.U_B = U_B;
 
+            // Early pruning: if current partial R_S is already greater than best, no need to recurse
+            if (is_greater<int_type>(R_S, R_S_best, length))
+                continue;
 
             if (subroutine<set_t, int_type>(S, S_inv, state_next, R_S_best, A_best, B_best, length))
             {

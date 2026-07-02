@@ -1,0 +1,40 @@
+Preparing data...
+Running 3 benchmarks x 3 runs.
+
+CALLED LEAST ELEMENT ON EMPTY SET!
+CALLED LEAST ELEMENT ON EMPTY SET!
+  aes_self run 1/3: FAILED ('bool' object is not subscriptable)
+CALLED LEAST ELEMENT ON EMPTY SET!
+CALLED LEAST ELEMENT ON EMPTY SET!
+  aes_self run 2/3: FAILED ('bool' object is not subscriptable)
+CALLED LEAST ELEMENT ON EMPTY SET!
+CALLED LEAST ELEMENT ON EMPTY SET!
+  aes_self run 3/3: FAILED ('bool' object is not subscriptable)
+  -> aes_self median: inf us
+
+CALLED LEAST ELEMENT ON EMPTY SET!
+CALLED LEAST ELEMENT ON EMPTY SET!
+  random_self run 1/3: FAILED ('bool' object is not subscriptable)
+CALLED LEAST ELEMENT ON EMPTY SET!
+CALLED LEAST ELEMENT ON EMPTY SET!
+  random_self run 2/3: FAILED ('bool' object is not subscriptable)
+CALLED LEAST ELEMENT ON EMPTY SET!
+CALLED LEAST ELEMENT ON EMPTY SET!
+  random_self run 3/3: FAILED ('bool' object is not subscriptable)
+  -> random_self median: inf us
+
+  random_nonequiv run 1/3: 0.6ms
+  random_nonequiv run 2/3: 0.5ms
+  random_nonequiv run 3/3: 0.5ms
+  -> random_nonequiv median: 545 us
+
+
+=== CORRECTNESS ===
+  random_nonequiv: PASS
+
+---
+total_time_ms:          0.545
+aes_self_ms                   inf
+random_self_ms                inf
+random_nonequiv_ms            0.545
+correctness:              PASS
