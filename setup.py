@@ -10,12 +10,8 @@ from Cython.Build import cythonize
 DEBUG = os.environ.get("DEBUG", "0") == "1"
 # !SECTION! Setting up the compilation of the C++ part
 
-if sys.platform == 'darwin':	#macOs
-    os.environ["CC"] = "clang"
-    os.environ["CXX"] = "clang++"
-else:
-    os.environ["CC"] = "g++"
-    os.environ["CXX"] = "g++"
+os.environ["CC"] = "g++"
+os.environ["CXX"] = "g++"
 extra_compile_args = ["-O3", "-march=native", "-std=c++20", "-pthread", "-Wno-narrowing", "-w", "-flto"]	#narrowing warnings in fp_lat when calling shape_t{p}
 
 extra_link_args=[]

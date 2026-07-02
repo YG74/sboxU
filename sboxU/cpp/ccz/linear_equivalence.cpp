@@ -1,5 +1,5 @@
 #include "./linear_equivalence.hpp"
-#include <unordered_map>
+#include <vector>
 
 
 
@@ -8,18 +8,21 @@
 
 LEguess::LEguess(const unsigned int _target_size) :
     target_size(_target_size),
+    partial_lut(_target_size, 0),
+    is_set(_target_size, 0), // false
     latest_entries(),
-    min_unset(1)
+    min_unset(0),
+    set_count(1) // initially only entry 0 is set
 {
+    // Initialize: set entry for 0,0
+    is_set[0] = 1;
     partial_lut[0] = 0;
-    is_set[0] = true;
 }
 
 
 LEguess::~LEguess()
 {
-    partial_lut.clear();
-    is_set.clear();
+    // vectors are cleaned automatically
 }
 
 
@@ -31,22 +34,22 @@ std::vector<IOpair> LEguess::add_entry(const IOpair e)
         throw ContradictionFound(x, y);
     else if ((x == 0) and (y != 0))
         throw ContradictionFound(x, y);
-    else if (not is_set[x])
+    else if (!is_set[x])
     {
         partial_lut[x] = y;
-        is_set[x] = true;
+        is_set[x] = 1;
+        set_count++; // count this new entry
         // propagating new value
         latest_entries.clear();
-        std::unordered_map<BinWord, bool> previously_set = is_set;
-        for (auto & entry : previously_set)
-            if (entry.second)
+        // Iterate over all possible entries; if set, propagate
+        for (unsigned int i = 0; i < target_size; ++i)
+        {
+            if (is_set[i])
             {
-                BinWord
-                    in_val = entry.first ^ x,
-                    out_val = partial_lut[entry.first] ^ y;
+                BinWord in_val = i ^ x;
+                BinWord out_val = partial_lut[i] ^ y;
                 if (is_set[in_val])
                 {
-
                     if (
                         (partial_lut[in_val] != out_val)
                         or
@@ -57,13 +60,15 @@ std::vector<IOpair> LEguess::add_entry(const IOpair e)
                 else
                 {
                     partial_lut[in_val] = out_val;
-                    is_set[in_val] = true;
+                    is_set[in_val] = 1;
+                    set_count++; // increment for newly set entry
                     latest_entries.push_back(IOpair(in_val, out_val));
                 }
             }
+        }
         // updating the value of the minimal unset entry
         while ((min_unset < target_size) and is_set[min_unset])
-            min_unset ++;
+            min_unset++;
         return latest_entries;
     }
     else if (partial_lut[x] != y)
@@ -74,7 +79,7 @@ std::vector<IOpair> LEguess::add_entry(const IOpair e)
 
 bool LEguess::is_entry_set(const BinWord x)
 {
-    return is_set[x];
+    return is_set[x] == 1;
 }
 
 
@@ -86,7 +91,7 @@ unsigned int LEguess::min_u()
 
 bool LEguess::complete()
 {
-    return (is_set.size() == target_size);
+    return set_count == target_size;
 }
 
 
@@ -104,8 +109,11 @@ Lut LEguess::lut()
     if (complete())
     {
         Lut result(target_size, 0);
-        for (auto & entry : partial_lut)
-            result[entry.first] = entry.second;
+        for (size_t i = 0; i < target_size; ++i)
+        {
+            if (is_set[i])
+                result[i] = partial_lut[i];
+        }
         return result;
     }
     else

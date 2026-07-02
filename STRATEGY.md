@@ -1,8 +1,8 @@
 # Optimization Strategy — Affine Equivalence Speed
 
 ## Current State
-- **Best total_time_ms**: 52.282 (after memory layout optimization)
-- **Iteration count**: 10
+- **Best total_time_ms**: 16.881 (after AVX2 SIMD is_greater)
+- **Iteration count**: 27
 
 ## Bottleneck Analysis
 | Benchmark | Value (ms) | % of total | Priority |
@@ -25,7 +25,7 @@ Improvements must exceed 2σ noise band to be considered real.
 ### C++ algorithmic optimizations
 2. **Replace dict with hash table** — Done. Replaced `partial_lut` and `is_set` with `std::unordered_map`. Total time reduced from 2187 ms → 816 ms. `is_set` ordered iteration no longer needed; correctness preserved.
 4. **Pre-check trivial cases** — Check if f(0)=0 and g(0)=0 early to skip translations. (Already in baseline, did nothing to optimize.)
-5. **Reduce memory allocations** — In the subroutine, vectors and sets are allocated each call. Pre-allocate or use arena allocators.
+5. **Reduce memory allocations** — In the subroutine, vectors and sets are allocated each call. (Tried: pre-allocate with reserve(); pre-allocate with arena allocators — both regressed.)
 
 ### C++ bit-set optimizations
 6. **AVX-512 support** — For 256-element sets, AVX-512 could process full sets with single instructions. (Not yet tried)
@@ -38,9 +38,9 @@ Improvements must exceed 2σ noise band to be considered real.
 ### Compiler optimizations
 
 ### Compiler optimizations
-12. **Profile-guided optimization** — Build with -fprofile-generate, run benchmarks, rebuild with -fprofile-use.
-13. **LTO** — Enable link-time optimization for cross-module inlining.
-14. **Tune -march** — Check if current march=native includes optimal SIMD extensions.
+12. **Profile-guided optimization** — Build with -fprofile-generate, run benchmarks, rebuild with -fprofile-use. (Tried, discarded.)
+13. **LTO** — Enable link-time optimization for cross-module inlining. (Tried, kept.)
+14. **Tune -march** — Check if current march=native includes optimal SIMD extensions. (Tried, discarded.)
 
 ## Ideas Already Tried
 3. **Parallelize le_class_representative calls (OpenMP)** — SUCCESS: total_time improved by 56%. Reason: The 256 independent calls to `le_class_representative` are now run in parallel using OpenMP, achieving near-linear speedup on available cores.
@@ -56,7 +56,9 @@ Improvements must exceed 2σ noise band to be considered real.
 22. **Replace is_set with unordered_map** — KEEP. Changed `is_set` from `std::map` to `std::unordered_map` in `LEguess`. Total time dropped from 2150.331 ms to 816.405 ms (62% reduction). AES self-equivalence fell by 77.8% (1928 → 43 ms), random_self by 79.0% (254 → 5.3 ms), random_nonequiv changed from 539 → 767 ms (regression, may be noise). Correctness passed (same checksum). Reason: `is_set` was the last O(log n) structure; switching to unordered_map eliminated log factor in lookups and iteration. Order no longer guaranteed, but propagation remains associative and final result identical.
 65. **Inline frequently-used Set operations** — DISCARD. Applied `__attribute__((always_inline))` to all Set methods to force inlining. Caused severe 30% regression (1058.4 ms vs 816.4 ms) due to instruction cache pressure from code bloat, especially the large `shift` implementation. Correctness preserved.
 66. **Differential spectrum filter** — KEEP. In `affine_equivalence_permutations`, compute DDT spectra of f and g early; if they differ, return [] immediately. This is correct because the multiset of DDT entries is an affine invariant for permutations. Result: total time dropped from 816.4 ms to 114.6 ms (85% improvement). random_nonequiv fell from 767.8 ms to 4.0 ms. Trade-off: equivalent pairs (aes_self, random_self) now pay ~80–90 ms overhead for the filter, making them ~2–3× slower. However, the huge win on the dominant non-equivalent case more than compensates. Added complexity: one extra Python import and dict conversion comparison; minimal. Correctness preserved.
+
 68. **Pre-allocate get_elements vector capacity** — DISCARD. Reason: Added reserve() to vectors in get_elements to avoid reallocation overhead. Performance was highly variable (53–105 ms range) and median 92.4 ms, significantly worse than current best 57.1 ms. Added minimal complexity but no reliable improvement. Correctness preserved.
+
 71. **More aggressive pruning** — KEEP. Added pre-recursion check in `subroutine` to skip branches where partial R_S is already lexicographically greater than best. Total time improved by 16.3% (70.242 ms → 58.845 ms). AES self-equivalence improved by 25.7% (63.7 ms → 47.4 ms), but random_self regressed by 34.6% (5.8 ms → 7.8 ms) and random_nonequiv regressed by 393% (0.7 ms → 3.7 ms). The net improvement in total time justifies keeping, as aes_self dominates. Reason: reduces wasted recursion; correctness preserved.`
 
 66. **Differential spectrum filter** — KEEP. In `affine_equivalence_permutations`, compute DDT spectra of f and g early; if they differ, return [] immediately. This is correct because the multiset of DDT entries is an affine invariant for permutations. Result: total time dropped from 816.4 ms to 114.6 ms (85% improvement). random_nonequiv fell from 767.8 ms to 4.0 ms. Trade-off: equivalent pairs (aes_self, random_self) now pay ~80–90 ms overhead for the filter, making them ~2–3× slower. However, the huge win on the dominant non-equivalent case more than compensates. Added complexity: one extra Python import and dict conversion comparison; minimal. Correctness preserved.
@@ -66,6 +68,14 @@ Improvements must exceed 2σ noise band to be considered real.
 72. **Fixed-state array for 256-element S-boxes (tstate_fixed_256)** — DISCARD. Reason: Attempting to replace heap-allocated vectors for A, B, R_S with stack arrays in a fixed-size state struct for the 256-element case. The implementation introduced significant complexity and compiler errors (mismatched `get_elements` overloads, reference binding issues). While the approach aimed to reduce memory allocations, the engineering cost and lack of reliable improvement led to discarding. Correctness not verified.
 
 73. **Memory layout optimization** — KEEP. Reordered set_t fields in tstate_t: D_A, D_B, N_A, N_B, U_A, U_B, C_A, C_B. This improves cache locality in backtracking loops by keeping frequently accessed pairs together. Total time dropped from 106.514 ms → 52.282 ms (51% reduction). All individual benchmarks improved by >5%. Correctness preserved.
+74. **Replace std::vector A,B,R_S with std::array (256)** — DISCARD. Replaced `std::vector` for A, B, R_S in `tstate_t` with `std::array<int_type, 256>` to eliminate heap allocations per recursion. Correctness passed, but total time increased from 52.282ms to 54.878ms (-5%). The dominant `aes_self` benchmark regressed 3% (47.4→48.861ms). `random_self` improved 30%, `random_nonequiv` improved 85%, but the net effect was a regression because allocation reduction did not offset stack copy overhead and possible cache pressure. Added complexity: changed many functors.
+75. **Replace get_elements with stack buffer** — DISCARD. Eliminated heap allocation in get_elements by using a stack buffer (std::array<int_type, 256>) and an out-parameter. Total time regressed from 52.282 ms to 59.133 ms. All benchmarks regressed: aes_self 50.672 ms (3%), random_self 6.876 ms (26%), random_nonequiv 1.585 ms (283%). Correctness preserved. Reason: Adding an out-parameter and requiring a buffer per call increased code size and overhead; stack buffer size also adds to function prolog/epilog; the previous best (memory layout) had already optimized memory accesses. Added complexity: changed all get_elements callers.
+
+76. **Tune -march=core-avx2** — DISCARD. Reason: Changing compiler flag from -march=native to -march=core-avx2 caused total time to increase from 52.282 ms to 58.219 ms (+11.4%). The dominant `aes_self` benchmark regressed from 47.414 ms to 50.618 ms (+6.7%), while `random_self` improved to 6.737 ms and `random_nonequiv` improved to 0.864 ms, but net effect negative. Correctness preserved.
+
+77. **Arena allocator for state vectors** — DISCARD. Implemented a thread-local bump allocator for `tstate_t` vectors using a custom allocator. The idea was to reduce allocation overhead and improve locality. However, caused severe performance regression: total time increased from 52.282 ms → 107.953 ms (+106%). AES self-equivalence doubled from ~46 ms to ~92 ms. The overhead of custom allocator and many small allocations from the arena outweighed any benefits. Correctness preserved but performance unacceptably degraded.
+
+78. **AVX2 SIMD is_greater for 8-bit lexicographic comparison** — KEEP. Replaced the scalar `is_greater` with an AVX2-optimized version that processes 32 1-byte elements per iteration using vector byte comparisons. This reduced total time from 52.282 ms → 16.881 ms (67.7% improvement). All benchmarks improved by >65%. Correctness preserved. Reason: `is_greater` was called millions of times in the backtracking search; SIMD reduced per-call cycle count, leading to significant speedup. Added complexity: introduced AVX2 intrinsics with compile guard.
 
 ## Exhausted Approaches
 (none yet)

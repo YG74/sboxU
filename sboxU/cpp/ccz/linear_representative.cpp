@@ -890,16 +890,41 @@ template<typename int_type> bool is_greater(const std::vector<int_type>& R_S, co
     if ((R_S_best[0] == 0) && (R_S_best[1] == 0))
         return false;
 
+    // Use SIMD optimization for 8-bit int_type with AVX2
+#if defined(__AVX2__)
+    if constexpr (sizeof(int_type) == 1) {
+        const uint8_t* a = reinterpret_cast<const uint8_t*>(R_S.data());
+        const uint8_t* b = reinterpret_cast<const uint8_t*>(R_S_best.data());
+        // Process 32 bytes at a time using AVX2
+        for (u32 i = 0; i < length; i += 32) {
+            // Load 32 1-byte values from each vector
+            __m256i va = _mm256_loadu_si256((const __m256i*)(a + i));
+            __m256i vb = _mm256_loadu_si256((const __m256i*)(b + i));
+            // Compare for equality: each element is 0xFF if equal, 0x00 if not
+            __m256i eq = _mm256_cmpeq_epi8(va, vb);
+            // Extract a mask of compare results: high bit of each byte
+            int mask = _mm256_movemask_epi8(eq);
+            if (mask == 0xFFFFFFFF) continue;
+            // Find the first zero bit in mask (first position where they differ)
+            int zero_bit = __builtin_ctz(~mask);
+            u32 idx = i + zero_bit;
+            if (a[idx] > b[idx]) return true;
+            if (a[idx] < b[idx]) return false;
+            // Once we find a difference, we return immediately
+        }
+        // All elements equal
+        return false;
+    }
+#endif
+
+    // Fallback scalar loop for non-8-bit or no AVX2
     for (u32 x = 0; x < length; x++)
     {
-        // special case: R_S[x] not defined (=> 0) and R_S_best[x] = 0
-        // works out with this
         if (R_S[x] > R_S_best[x])
             return true;
         if (R_S[x] < R_S_best[x])
             return false;
     }
-    // can happen if there are self equivalences (?)
     return false;
 }
 

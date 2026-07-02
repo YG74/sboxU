@@ -39,13 +39,14 @@ class LEguess
 {
 private:
     unsigned int target_size;
-    std::unordered_map<BinWord, BinWord> partial_lut;
+    std::vector<BinWord> partial_lut;
+    std::vector<char> is_set; // char used as bool
     std::vector<IOpair> latest_entries;
     unsigned int min_unset;
+    unsigned int set_count; // number of entries set
 public:
     LEguess(const unsigned int _target_size);
     ~LEguess();
-    std::unordered_map<BinWord, bool> is_set;
     std::vector<IOpair> add_entry(const IOpair e);
     bool is_entry_set(const BinWord x);
     unsigned int min_u();
