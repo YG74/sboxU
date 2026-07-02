@@ -175,7 +175,8 @@ def affine_equivalence_permutations(f, g):
         raise Exception("second argument is not a permutation!")
 
     # Fast path for self-equivalence: f == g => identity mapping is a solution
-    if sf == sg:
+    # Use bytestring comparison for speed instead of Python loop in __eq__
+    if sf.to_bytes() == sg.to_bytes():
         n = sf.get_input_length()
         identity_A = identity_F2AffineMap(n)
         identity_B = identity_F2AffineMap(n)
