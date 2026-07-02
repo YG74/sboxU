@@ -617,6 +617,142 @@ public:
     {
         set_t a = b;
         // compute a \oplus shift
+
+#if defined(__AVX2__)
+        // bit 7
+        {
+            __m256i perm = _mm256_permute2x128_si256(a, a, 1);
+            __m256i mask = _mm256_set1_epi8((shift & 0x80) ? 0xFF : 0x00);
+            a = _mm256_blendv_epi8(a, perm, mask);
+        }
+        // bit 6
+        {
+            __m256i perm = _mm256_permute4x64_epi64(a, _MM_SHUFFLE(2, 3, 0, 1));
+            __m256i mask = _mm256_set1_epi8((shift & 0x40) ? 0xFF : 0x00);
+            a = _mm256_blendv_epi8(a, perm, mask);
+        }
+        // bit 5
+        {
+            __m256i perm = _mm256_shuffle_epi32(a, _MM_SHUFFLE(2, 3, 0, 1));
+            __m256i mask = _mm256_set1_epi8((shift & 0x20) ? 0xFF : 0x00);
+            a = _mm256_blendv_epi8(a, perm, mask);
+        }
+        // bit 4
+        {
+            __m256i perm = _mm256_shufflelo_epi16(a, _MM_SHUFFLE(2, 3, 0, 1));
+            perm = _mm256_shufflehi_epi16(perm, _MM_SHUFFLE(2, 3, 0, 1));
+            __m256i mask = _mm256_set1_epi8((shift & 0x10) ? 0xFF : 0x00);
+            a = _mm256_blendv_epi8(a, perm, mask);
+        }
+        // bit 3
+        {
+            static const __m256i mask_shuffle = _mm256_set_epi8(14, 15, 12, 13, 10, 11, 8, 9, 6, 7, 4, 5, 2, 3, 0, 1, 14, 15, 12, 13, 10, 11, 8, 9, 6, 7, 4, 5, 2, 3, 0, 1);
+            __m256i perm = _mm256_shuffle_epi8(a, mask_shuffle);
+            __m256i mask = _mm256_set1_epi8((shift & 0x08) ? 0xFF : 0x00);
+            a = _mm256_blendv_epi8(a, perm, mask);
+        }
+        // bit 2
+        {
+            __m256i mask_high = _mm256_set1_epi8((char)0xF0);
+            __m256i mask_low  = _mm256_set1_epi8(0x0F);
+            __m256i high = _mm256_and_si256(a, mask_high);
+            __m256i low  = _mm256_and_si256(a, mask_low);
+            __m256i perm = _mm256_or_si256(_mm256_srli_epi16(high, 4), _mm256_slli_epi16(low, 4));
+            __m256i mask = _mm256_set1_epi8((shift & 0x04) ? 0xFF : 0x00);
+            a = _mm256_blendv_epi8(a, perm, mask);
+        }
+        // bit 1
+        {
+            __m256i mask_high = _mm256_set1_epi8((char)0xCC);
+            __m256i mask_low  = _mm256_set1_epi8(0x33);
+            __m256i high = _mm256_and_si256(a, mask_high);
+            __m256i low  = _mm256_and_si256(a, mask_low);
+            __m256i perm = _mm256_or_si256(_mm256_srli_epi16(high, 2), _mm256_slli_epi16(low, 2));
+            __m256i mask = _mm256_set1_epi8((shift & 0x02) ? 0xFF : 0x00);
+            a = _mm256_blendv_epi8(a, perm, mask);
+        }
+        // bit 0
+        {
+            __m256i mask_high = _mm256_set1_epi8((char)0xAA);
+            __m256i mask_low  = _mm256_set1_epi8(0x55);
+            __m256i high = _mm256_and_si256(a, mask_high);
+            __m256i low  = _mm256_and_si256(a, mask_low);
+            __m256i perm = _mm256_or_si256(_mm256_srli_epi16(high, 1), _mm256_slli_epi16(low, 1));
+            __m256i mask = _mm256_set1_epi8((shift & 0x01) ? 0xFF : 0x00);
+            a = _mm256_blendv_epi8(a, perm, mask);
+        }
+#elif defined(__ARM_NEON)
+        // Original NEON shift (still uses branches, but not optimal on AVX2)
+        if ((shift >> 7) & 0x1)
+        {
+            a.val[0] = b.val[1];
+            a.val[1] = b.val[0];
+        }
+        if ((shift >> 6) & 0x1)
+        {
+            a.val[0] = vextq_u64(a.val[0], a.val[0], 1);
+            a.val[1] = vextq_u64(a.val[1], a.val[1], 1);
+        }
+        if ((shift >> 5) & 0x1)
+        {
+            a.val[0] = vrev64q_u32(a.val[0]);
+            a.val[1] = vrev64q_u32(a.val[1]);
+        }
+        if ((shift >> 4) & 0x1)
+        {
+            a.val[0] = vrev64q_u16(a.val[0]);
+            a.val[0] = vrev64q_u32(a.val[0]);
+            a.val[1] = vrev64q_u16(a.val[1]);
+            a.val[1] = vrev64q_u32(a.val[1]);
+        }
+        if ((shift >> 3) & 0x1)
+        {
+            a.val[0] = vrev64q_u8(a.val[0]);
+            a.val[0] = vrev64q_u16(a.val[0]);
+            a.val[1] = vrev64q_u8(a.val[1]);
+            a.val[1] = vrev64q_u16(a.val[1]);
+        }
+        if ((shift >> 2) & 0x1)
+        {
+            const auto mask_high = vdupq_n_u64(0xF0F0F0F0F0F0F0F0);
+            const auto mask_low  = vdupq_n_u64(0x0F0F0F0F0F0F0F0F);
+
+            for (u32 i = 0; i < 2; i++)
+            {
+                const auto high = vandq_u64(a.val[i], mask_high);
+                const auto low  = vandq_u64(a.val[i], mask_low);
+
+                a.val[i] = vorrq_u64(vshrq_n_u64(high, 4), vshlq_n_u64(low, 4));
+            }
+        }
+        if ((shift >> 1) & 0x1)
+        {
+            const auto mask_high = vdupq_n_u64(0xCCCCCCCCCCCCCCCC);
+            const auto mask_low  = vdupq_n_u64(0x3333333333333333);
+
+            for (u32 i = 0; i < 2; i++)
+            {
+                const auto high = vandq_u64(a.val[i], mask_high);
+                const auto low  = vandq_u64(a.val[i], mask_low);
+
+                a.val[i] = vorrq_u64(vshrq_n_u64(high, 2), vshlq_n_u64(low, 2));
+            }
+        }
+        if (shift & 0x1)
+        {
+            const auto mask_high = vdupq_n_u64(0xAAAAAAAAAAAAAAAA);
+            const auto mask_low  = vdupq_n_u64(0x5555555555555555);
+
+            for (u32 i = 0; i < 2; i++)
+            {
+                const auto high = vandq_u64(a.val[i], mask_high);
+                const auto low  = vandq_u64(a.val[i], mask_low);
+
+                a.val[i] = vorrq_u64(vshrq_n_u64(high, 1), vshlq_n_u64(low, 1));
+            }
+        }
+#else
+        // Fallback - original branchy version for other architectures
         if ((shift >> 7) & 0x1)
         {
 #ifdef __AVX2__
@@ -731,6 +867,7 @@ public:
             }
 #endif
         }
+#endif
         return a;
     };
     static inline std::vector<int_type> get_elements(const set_t& a)
