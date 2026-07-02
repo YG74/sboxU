@@ -7,6 +7,7 @@ from sboxU.core.sbox import F2_trans
 from sboxU.config import MAX_N_THREADS
 from collections import defaultdict
 from sboxU.statistics import differential_spectrum
+from sboxU.core.f2functions import identity_F2AffineMap
 
 
 from cython.operator cimport dereference
@@ -172,6 +173,13 @@ def affine_equivalence_permutations(f, g):
         raise Exception("first argument is not a permutation!")
     if not sg.is_invertible():
         raise Exception("second argument is not a permutation!")
+
+    # Fast path for self-equivalence: f == g => identity mapping is a solution
+    if sf == sg:
+        n = sf.get_input_length()
+        identity_A = identity_F2AffineMap(n)
+        identity_B = identity_F2AffineMap(n)
+        return [identity_A, 0, identity_B, 0]
 
     # Quick filter: differential spectrum is an affine invariant for permutations
     # If the differential spectra differ, f and g cannot be affine equivalent.
