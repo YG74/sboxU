@@ -2,7 +2,7 @@
 
 ## Current State
 - **Best total_time_ms**: 0.300 (after fast path byte comparison)
-- **Iteration count**: 31
+- **Iteration count**: 32
 
 ## Bottleneck Analysis
 | Benchmark | Value (ms) | % of total | Priority |
