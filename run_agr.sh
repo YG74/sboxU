@@ -6,6 +6,7 @@ PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_DIR"
 
 MAX_ITERATIONS=100
+SAGE_PYTHON="/mnt/sda1/miniconda3/envs/sage/bin/sage --python"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -31,7 +32,7 @@ for ((i=1; i<=MAX_ITERATIONS; i++)); do
         2>&1 || true
 
     echo "--- Iteration $i done ---"
-    sage -python analysis.py 2>/dev/null || true
+    $SAGE_PYTHON analysis.py 2>/dev/null || true
     echo ""; cat results.tsv 2>/dev/null; echo ""
     sleep 2
 done

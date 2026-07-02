@@ -25,8 +25,9 @@ The heavy computation is in C++ (cpp/ccz/linear_representative.cpp):
 - **Baseline**: baseline_checksums.json — DO NOT MODIFY
 - **Results**: results.tsv — experiment log (append-only)
 - **Strategy**: STRATEGY.md — what to try next
-- **Build**: `pip install -e .` from project root (Cython → C++ compilation)
-- **Runtime**: `sage -python` (required for SageMath Cython deps)
+- **Build**: `/mnt/sda1/miniconda3/envs/sage/bin/sage --python setup.py build_ext --inplace` (Cython → C++ compilation)
+- **Runtime**: `/mnt/sda1/miniconda3/envs/sage/bin/sage --python` (required for SageMath Cython deps)
+- **Why**: the system `sage` is in the `sage` conda environment; `sage -python` is not supported here.
 
 ## One Iteration = One Experiment
 
@@ -43,18 +44,18 @@ Read `results.tsv` and `STRATEGY.md` to know where you are.
 - Keep changes small and focused — one idea per experiment
 - **CAN modify**: any file in sboxU/ (Python, Cython .pyx, C++ .cpp/.h)
 - **CANNOT modify**: benchmark.py, baseline_checksums.json, run_agr.sh, analysis.py, STRATEGY.md formatting
-- After changing C++/Cython code, rebuild with `pip install -e .`
+- After changing C++/Cython code, rebuild with `/mnt/sda1/miniconda3/envs/sage/bin/sage --python setup.py build_ext --inplace`
 
 ### Step 4: Build (if needed)
 ```bash
 cd /home/gleb/sboxU
-pip install -e . 2>&1 | tail -5
+/mnt/sda1/miniconda3/envs/sage/bin/sage --python setup.py build_ext --inplace 2>&1 | tail -5
 ```
 If build fails: fix if trivial, log as "crash" if fundamental.
 
 ### Step 5: Benchmark
 ```bash
-cd /home/gleb/sboxU && sage -python benchmark.py --verify
+cd /home/gleb/sboxU && /mnt/sda1/miniconda3/envs/sage/bin/sage --python benchmark.py --verify
 ```
 
 ### Step 6: Decide Keep or Discard
