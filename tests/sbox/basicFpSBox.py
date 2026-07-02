@@ -267,6 +267,14 @@ def main_test():
             fail("u ** -1 != u.inverse()")
         # --- } 
         section('Inversion')
+        subsection('Identity S-box')
+        # --- { 
+        if fp_lut_eq(id_sb.get_lut(), u.get_input_space()):
+            success("identity_S_box(2,3) maps every input to itself")
+        else:
+            fail("identity_S_box(2,3) has wrong LUT: {}".format(
+                [list(x) for x in id_sb.get_lut()]))
+        # --- } 
         subsection('Invertibility test')
         # --- { 
         if u.is_invertible():
@@ -296,14 +304,6 @@ def main_test():
             success("u_inv[(0,0)] = (0,1) as expected from the LUT")
         else:
             fail("u_inv[(0,0)] = {}, expected (0,1)".format(list(u_inv[[0,0]])))
-        # --- } 
-        subsection('Identity S-box')
-        # --- { 
-        if fp_lut_eq(id_sb.get_lut(), u.get_input_space()):
-            success("identity_S_box(2,3) maps every input to itself")
-        else:
-            fail("identity_S_box(2,3) has wrong LUT: {}".format(
-                [list(x) for x in id_sb.get_lut()]))
         # --- } 
         section('Coordinate functions and components')
         subsection('Coordinate functions')
@@ -380,25 +380,15 @@ def main_test():
         input_sp = [list(x) for x in u.get_input_space()]
         input_size = u.get_input_size()
         n = u.get_input_space_size()
-        def add_fp(a, b, prime):
-            return [(a[i] + b[i]) % prime for i in range(len(a))]
-        def sub_fp(a, b, prime):
-            return [(a[i] - b[i] + prime) % prime for i in range(len(a))]
-        def int_of_vec(v, prime):
-            result = 0
-            power = 1
-            for coord in v:
-                result += coord * power
-                power *= prime
-            return result
+        powers = u.get_powers_in()
         expected_deriv = []
         for i in range(n):
             x = input_sp[i]
-            x_plus_delta = add_fp(x, delta, p)
-            idx_xd = int_of_vec(x_plus_delta, p)
+            x_plus_delta = [Fp(x[j]) + Fp(delta[j]) for j in range(input_size)]
+            idx_xd = S_box_fp.vec_to_int(x_plus_delta, powers)
             out_xd = list(u.get_lut()[idx_xd])
             out_x  = list(u.get_lut()[i])
-            expected_deriv.append(sub_fp(out_xd, out_x, p))
+            expected_deriv.append([Fp(out_xd[j]) - Fp(out_x[j]) for j in range(u.get_output_size())])
         got_deriv = [list(y) for y in u.derivative(delta)]
         if got_deriv == expected_deriv:
             success("derivative in direction (1,0) matches the expected values")
@@ -732,20 +722,24 @@ def main_test():
         # --- } 
         subsection('Derivative in multiple directions')
         # --- { 
-        def ref_deriv(sbox, delta, prime):
+        def ref_deriv(sbox, delta):
+            Fp_s = GF(sbox.get_p())
             lut_s = [list(y) for y in sbox.get_lut()]
             sp = [list(x) for x in sbox.get_input_space()]
+            powers = sbox.get_powers_in()
+            in_dim = sbox.get_input_size()
+            out_dim = sbox.get_output_size()
             result = []
             for i, x in enumerate(sp):
-                xd = add_fp(x, delta, prime)
-                idx_xd = int_of_vec(xd, prime)
-                result.append(sub_fp(lut_s[idx_xd], lut_s[i], prime))
+                xd = [Fp_s(x[j]) + Fp_s(delta[j]) for j in range(in_dim)]
+                idx_xd = S_box_fp.vec_to_int(xd, powers)
+                result.append([Fp_s(lut_s[idx_xd][j]) - Fp_s(lut_s[i][j]) for j in range(out_dim)])
             return result
         # --- } 
         # --- { 
         delta_01 = [0, 1]
         got_01 = [list(y) for y in u.derivative(delta_01)]
-        exp_01 = ref_deriv(u, delta_01, p)
+        exp_01 = ref_deriv(u, delta_01)
         if got_01 == exp_01:
             success("derivative in direction (0,1) matches reference")
         else:
@@ -754,7 +748,7 @@ def main_test():
         # --- { 
         delta_22 = [2, 2]
         got_22 = [list(y) for y in u.derivative(delta_22)]
-        exp_22 = ref_deriv(u, delta_22, p)
+        exp_22 = ref_deriv(u, delta_22)
         if got_22 == exp_22:
             success("derivative in direction (2,2) matches reference")
         else:
