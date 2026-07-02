@@ -16,15 +16,15 @@ from cython.operator cimport dereference
 
 def differential_spectrum(s):
     """The differential spectrum of an S-box counts the number of entries in the DDT that are equal to each value.
-    
+
     This function does not store the DDT in memory before counting, and uses openMP multi-threading to speed things further.
 
     Args:
         s: An S-boxable object.
-    
+
     Returns:
         Spectrum: A `Spectrum` instance `d` such that `d[k]` is equal to the number of occurrences of the coefficient `k` in the DDT of `s`.
-    
+
     """
     sb = get_sbox(s)
     result = Spectrum(name="Differential".encode("UTF-8"))
@@ -34,6 +34,17 @@ def differential_spectrum(s):
                                   n_threads)
     )
     return result
+
+
+def early_differential_spectrum_compare(S_box f, S_box g):
+    """Compare differential spectra of f and g with early exit.
+    Returns True if spectra are equal, False otherwise.
+    Uses incremental comparison to abort as soon as a mismatch is found.
+    """
+    return cpp_differential_spectrum_compare(
+        dereference((<S_box>f).cpp_sb),
+        dereference((<S_box>g).cpp_sb)
+    )
 
 
 def ddt(s):

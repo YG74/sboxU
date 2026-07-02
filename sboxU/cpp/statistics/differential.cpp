@@ -1,6 +1,6 @@
 #include "differential.hpp"
 
-// !SECTION! The DDT itself 
+// !SECTION! The DDT itself
 
 std::vector<Integer> cpp_ddt_row(const cpp_S_box & s, const BinWord delta)
 {
@@ -39,15 +39,15 @@ std::vector< std::vector<BinWord>> cpp_xddt_row(const cpp_S_box & s, const BinWo
         result[y].push_back(x);
         result[y].push_back(x^delta);
     }
-        
+
     return result;
 }
 
  Xtable cpp_xddt(const cpp_S_box & s){
-    Xtable table; 
+    Xtable table;
     table.reserve(s.input_space_size());
 
-    std::vector<std::vector<BinWord>> first_row(s.input_space_size()); 
+    std::vector<std::vector<BinWord>> first_row(s.input_space_size());
     for (BinWord x = 0; x < s.input_space_size(); x++) {
         first_row[0].push_back(x);
     }
@@ -69,15 +69,15 @@ std::vector<std::vector<BinWord>> cpp_yddt_row(const cpp_S_box & s, const BinWor
         result[y].push_back(s[x]);
         result[y].push_back(s[x^delta]);
     }
-        
+
     return result;
 }
 
  Xtable cpp_yddt(const cpp_S_box & s){
-    Xtable table; 
+    Xtable table;
     table.reserve(s.input_space_size());
 
-    std::vector<std::vector<BinWord>> first_row(s.input_space_size()); 
+    std::vector<std::vector<BinWord>> first_row(s.input_space_size());
     for (BinWord x = 0; x < s.input_space_size(); x++) {
         first_row[0].push_back(x);
     }
@@ -100,15 +100,15 @@ std::vector< std::vector<BinWord>> cpp_zddt_row(const cpp_S_box & s, const BinWo
         result[y].push_back((x|(s[x]<< s.get_input_length())));
         result[y].push_back((x^delta|(s[x^delta]<< s.get_input_length())));
     }
-        
+
     return result;
 }
 
  Xtable cpp_zddt(const cpp_S_box & s){
-    Xtable table; 
+    Xtable table;
     table.reserve(s.input_space_size());
 
-    std::vector<std::vector<BinWord>> first_row(s.input_space_size()); 
+    std::vector<std::vector<BinWord>> first_row(s.input_space_size());
     for (BinWord x = 0; x < s.input_space_size(); x++) {
         first_row[0].push_back(x|(s[x]<< s.get_input_length()));
     }
@@ -123,7 +123,7 @@ return table;
 
 
 
-// !SECTION! Differential spectrum 
+// !SECTION! Differential spectrum
 
 
 void cpp_ddt_rows_count(
@@ -235,4 +235,28 @@ bool cpp_is_differential_uniformity_smaller_than(
         return cpp_is_differential_uniformity_smaller_than_2(s);
     else
         return cpp_is_differential_uniformity_smaller_than_u(s,u);
+}
+
+// Compare differential spectra of f and g with early exit
+bool cpp_differential_spectrum_compare(const cpp_S_box &f, const cpp_S_box &g) {
+    unsigned int n = f.input_space_size();
+    std::vector<int> hist_f(n+1, 0);
+    std::vector<int> hist_g(n+1, 0);
+    for (unsigned int a = 1; a < n; a++) {
+        std::vector<Integer> row_f = cpp_ddt_row(f, a);
+        std::vector<Integer> row_g = cpp_ddt_row(g, a);
+        for (unsigned int i = 0; i < row_f.size(); i++) {
+            hist_f[row_f[i]]++;
+        }
+        for (unsigned int i = 0; i < row_g.size(); i++) {
+            hist_g[row_g[i]]++;
+        }
+        // Early exit: compare histograms
+        for (int c = 0; c <= n; c++) {
+            if (hist_f[c] != hist_g[c]) {
+                return false;
+            }
+        }
+    }
+    return true;
 }

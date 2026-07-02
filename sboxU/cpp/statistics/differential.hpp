@@ -39,5 +39,7 @@ bool cpp_is_differential_uniformity_smaller_than(
     const Integer u
     ) ;
 
+// Compare differential spectra of f and g with early exit
+bool cpp_differential_spectrum_compare(const cpp_S_box &f, const cpp_S_box &g);
 
 #endif

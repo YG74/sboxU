@@ -6,7 +6,7 @@ from sboxU.core import get_sbox, oplus
 from sboxU.core.sbox import F2_trans
 from sboxU.config import MAX_N_THREADS
 from collections import defaultdict
-from sboxU.statistics import differential_spectrum
+from sboxU.statistics import differential_spectrum, early_differential_spectrum_compare
 from sboxU.core.f2functions import identity_F2AffineMap
 
 
@@ -185,13 +185,10 @@ def affine_equivalence_permutations(f, g):
     # If the differential spectra differ, f and g cannot be affine equivalent.
     # This avoids running the expensive full algorithm for most non-equivalent pairs.
     try:
-        ds_f = differential_spectrum(sf)
-        ds_g = differential_spectrum(sg)
-        # Compare as dicts because Spectrum.__eq__ is unreliable
-        if dict(ds_f) != dict(ds_g):
+        if not early_differential_spectrum_compare(sf, sg):
             return []
     except Exception:
-        # If differential_spectrum fails for any reason, fall back to full algorithm
+        # If early_differential_spectrum_compare fails for any reason, fall back to full algorithm
         pass
     # Setup translations
     n = sf.get_input_length()

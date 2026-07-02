@@ -30,6 +30,10 @@ cdef extern from "../cpp/statistics/differential.hpp":
         const cpp_S_box & s,
         const int64_t u
     )
+    bool cpp_differential_spectrum_compare(
+        const cpp_S_box & f,
+        const cpp_S_box & g
+    )
     std_vector[std_vector[std_vector[BinWord]]] cpp_xddt(
         const cpp_S_box & s
     )
