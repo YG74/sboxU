@@ -680,53 +680,17 @@ cdef class S_box_fp:
         return dereference(self.cpp_sb).get_lut()
 
     def get_powers_in(S_box_fp self) -> list:
-        """Returns the iterated powers of p used to index the input space.
-
-        Returns:
-            list: The list [p^0, p^1, ..., p^(t-1)] for the input space.
-        """
         return list(dereference(self.cpp_sb).get_powers_in())
 
     def get_powers_out(S_box_fp self) -> list:
-        """Returns the iterated powers of p used to index the output space.
-
-        Returns:
-            list: The list [p^0, p^1, ..., p^(u-1)] for the output space.
-        """
         return list(dereference(self.cpp_sb).get_powers_out())
 
     @staticmethod
     def vec_to_int(FpWord v, std_vector[cpp_Integer] powers) -> int:
-        """Converts a base-p vector to the integer it represents.
-
-        Computes the inner product of v with powers, i.e.
-        v[0]*p^0 + v[1]*p^1 + ... + v[t-1]*p^(t-1).
-
-        Args:
-            v (list): The base-p coordinate vector (FpWord or list of ints).
-            powers (list): The iterated powers [p^0, ..., p^(t-1)] as
-                returned by get_powers_in or get_powers_out.
-
-        Returns:
-            int: The integer represented by v in base p.
-        """
         return cpp_S_box_fp.vec_to_int(v, powers)
 
     @staticmethod
     def int_to_vec(cpp_Integer i, std_vector[FpWord] lookup) -> list:
-        """Converts an integer index to its base-p vector representation.
-
-        Fetches the vector from the precomputed lookup table, which is
-        typically the input or output space of an S-box.
-
-        Args:
-            i (int): The integer index to convert.
-            lookup (list): The precomputed lookup table mapping integers to
-                FpWords, as returned by get_input_space or get_output_space.
-
-        Returns:
-            list: The base-p coordinate vector at index i.
-        """
         return list(cpp_S_box_fp.int_to_vec(i, lookup))
 
     def to_bytes(S_box_fp self) -> bytes:
@@ -949,8 +913,22 @@ def get_Sbox_from_univariate_polynomial(s : Polynomial, name, input_casts : list
         (<S_box>result).set_inner_sbox(cpp_S_box(<std_vector[BinWord]>lut))
         return result
     else:
-        # !TODO! implement Fp case 
-        raise NotImplementedError
+        p = field.characteristic()
+        n = field.degree()
+        alpha = field.gen()
+        input_space = cpp_S_box_fp.build_input_space(<cpp_Integer>p, <cpp_Integer>n)
+        lut_cpp = std_vector[FpWord]()
+        for x_int in range(p**n):
+            x_vec = list(cpp_S_box_fp.int_to_vec(x_int, input_space))
+            x_field = sum((field(x_vec[j]) * alpha**j for j in range(n)), field(0))
+            y_field = s(x_field)
+            out = FpWord()
+            for c in y_field.polynomial().padded_list(n):
+                out.push_back(int(c))
+            lut_cpp.push_back(out)
+        result_fp = S_box_fp(name=name)
+        (<S_box_fp>result_fp).set_inner_sbox(cpp_S_box_fp(<cpp_Integer>p, lut_cpp))
+        return result_fp
 
 
 

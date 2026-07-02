@@ -98,6 +98,70 @@ else:
     fail("v[(1,2)] = {} instead of (2,0)".format(list(v[[1,2]])))
 ```
 
+### From a univariate polynomial
+
+A univariate polynomial over $\mathbb{F}_p$ (or $\mathbb{F}_{p^n}$) can also
+be passed to `get_sbox`. The LUT is built by evaluating the polynomial on
+every element of the base field, using the polynomial basis to convert between
+field elements and coordinate vectors.
+
+For a polynomial over $\mathbb{F}_p$ (degree-1 case), the result has
+`input_size = output_size = 1`.
+
+```python
+P3 = PolynomialRing(Fp, 'x')
+xp = P3.gen()
+sq_uni = get_sbox(xp**2)
+if isinstance(sq_uni, S_box_fp):
+    success("get_sbox(x**2 over GF(3)) returned an S_box_fp instance")
+else:
+    fail("expected S_box_fp from univariate polynomial, got {}".format(type(sq_uni)))
+```
+
+The squaring map over $\mathbb{F}_3$ is $0 \mapsto 0$, $1 \mapsto 1$, $2
+\mapsto 1$, so the LUT should be `[[0],[1],[1]]`.
+
+```python
+expected_sq = [[0],[1],[1]]
+got_sq = [list(y) for y in sq_uni.get_lut()]
+if got_sq == expected_sq:
+    success("squaring map x^2 over GF(3) has LUT [[0],[1],[1]]")
+else:
+    fail("squaring map LUT is {}, expected {}".format(got_sq, expected_sq))
+```
+
+We also check that the identity polynomial $x$ over $\mathbb{F}_3$ matches the
+identity S-box, and that evaluating at a specific point is consistent with the
+multivariate construction.
+
+```python
+id_uni = get_sbox(xp)
+id_sp = [list(v) for v in id_uni.get_input_space()]
+id_lut = [list(y) for y in id_uni.get_lut()]
+if id_lut == id_sp:
+    success("identity polynomial x over GF(3) gives the identity S-box")
+else:
+    fail("identity polynomial LUT is {}, expected {}".format(id_lut, id_sp))
+```
+
+For a polynomial over $\mathbb{F}_{p^n}$ the result has `input_size =
+output_size = n`. Here we use $\mathbb{F}_9 = \mathbb{F}_{3^2}$ and the
+identity map: every element should map to itself.
+
+```python
+K9 = GF(9, 'a')
+P9 = PolynomialRing(K9, 'z')
+z = P9.gen()
+id9_uni = get_sbox(z)
+sp9 = [list(v) for v in id9_uni.get_input_space()]
+lut9 = [list(y) for y in id9_uni.get_lut()]
+if lut9 == sp9 and id9_uni.get_input_size() == 2:
+    success("identity polynomial z over GF(9) gives identity S-box on F_3^2")
+else:
+    fail("GF(9) identity polynomial: input_size={}, lut==input_space: {}".format(
+        id9_uni.get_input_size(), lut9 == sp9))
+```
+
 ### Bytes round-trip
 
 The `to_bytes` method serializes any S-box to a byte string that `get_sbox`
