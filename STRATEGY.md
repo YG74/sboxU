@@ -29,7 +29,7 @@ Improvements must exceed 2σ noise band to be considered real.
 
 ### C++ bit-set optimizations
 6. **AVX-512 support** — For 256-element sets, AVX-512 could process full sets with single instructions. (Not yet tried)
-7. **Reduce branch mispredictions** — The `shift` function has many conditional branches. Use branchless SIMD consistently. (Not yet tried)
+7. **Reduce branch mispredictions** — The `shift` function has many conditional branches. Use branchless SIMD consistently. **DONE**. Replaced with `_mm256_blendv_epi8` for AVX2, yielding 0.8% total improvement.
 
 ### Algorithmic improvements
 9. **Caching linear representatives** — Many translations may produce the same linear class representative. Cache results to avoid recomputation. (Tried, not helpful.)
@@ -78,6 +78,8 @@ Improvements must exceed 2σ noise band to be considered real.
 78. **AVX2 SIMD is_greater for 8-bit lexicographic comparison** — KEEP. Replaced the scalar `is_greater` with an AVX2-optimized version that processes 32 1-byte elements per iteration using vector byte comparisons. This reduced total time from 52.282 ms → 16.881 ms (67.7% improvement). All benchmarks improved by >65%. Correctness preserved. Reason: `is_greater` was called millions of times in the backtracking search; SIMD reduced per-call cycle count, leading to significant speedup. Added complexity: introduced AVX2 intrinsics with compile guard.
 
 79. **Early pruning before state construction** — KEEP. Moved `is_greater` check before allocating `state_next` in `subroutine`, avoiding unnecessary heap allocations and recursion for branches that would fail. Total time improved from 16.881 ms → 16.690 ms (1.13% improvement). AES self-equivalence improved from 14.695 ms → 14.393 ms (2.1% improvement). All benchmarks remain correct. Reason: eliminates redundant state construction and recursion overhead for pruned branches. Added complexity: minimal, just moved a check earlier. Correctness preserved.
+
+**Branchless shift for AVX2** — KEEP. Replaced conditional branches in `shift` function with SIMD blends using `_mm256_blendv_epi8`. This eliminates branch mispredictions in the shift operation, which is called frequently in the backtracking loop. Total time improved from 16.690 ms → 16.553 ms (0.8% improvement). All benchmarks improved: aes_self -0.64%, random_self -1.9%, random_nonequiv -2.3%. Correctness preserved. Added complexity: branchless SIMD logic in compile guard.
 
 ## Exhausted Approaches
 (none yet)
