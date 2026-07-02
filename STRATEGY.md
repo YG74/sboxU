@@ -1,15 +1,15 @@
 # Optimization Strategy — Affine Equivalence Speed
 
 ## Current State
-- **Best total_time_ms**: 16.881 (after AVX2 SIMD is_greater)
-- **Iteration count**: 27
+- **Best total_time_ms**: 16.690 (after early pruning before state construction)
+- **Iteration count**: 28
 
 ## Bottleneck Analysis
 | Benchmark | Value (ms) | % of total | Priority |
 |---|---|---|---|
-| random_self | 5.698 | 10.9% | MEDIUM |
-| aes_self | 45.862 | 87.7% | HIGH |
-| random_nonequiv | 0.721 | 1.4% | LOW |
+| random_self | 2.081 | 12.5% | MEDIUM |
+| aes_self | 14.393 | 86.2% | HIGH |
+| random_nonequiv | 0.216 | 1.3% | LOW |
 
 ## Variance Profile
 | Benchmark | Median | Std Dev | Noise Band (±2σ) |
@@ -77,6 +77,8 @@ Improvements must exceed 2σ noise band to be considered real.
 
 78. **AVX2 SIMD is_greater for 8-bit lexicographic comparison** — KEEP. Replaced the scalar `is_greater` with an AVX2-optimized version that processes 32 1-byte elements per iteration using vector byte comparisons. This reduced total time from 52.282 ms → 16.881 ms (67.7% improvement). All benchmarks improved by >65%. Correctness preserved. Reason: `is_greater` was called millions of times in the backtracking search; SIMD reduced per-call cycle count, leading to significant speedup. Added complexity: introduced AVX2 intrinsics with compile guard.
 
+79. **Early pruning before state construction** — KEEP. Moved `is_greater` check before allocating `state_next` in `subroutine`, avoiding unnecessary heap allocations and recursion for branches that would fail. Total time improved from 16.881 ms → 16.690 ms (1.13% improvement). AES self-equivalence improved from 14.695 ms → 14.393 ms (2.1% improvement). All benchmarks remain correct. Reason: eliminates redundant state construction and recursion overhead for pruned branches. Added complexity: minimal, just moved a check earlier. Correctness preserved.
+
 ## Exhausted Approaches
 (none yet)
 
@@ -86,5 +88,6 @@ Improvements must exceed 2σ noise band to be considered real.
 - The C++ subroutine is a backtracking search; pruning and early termination have big impact
 - 256-bit AVX2 registers can hold exactly one 8-bit S-box domain (256 bits) — perfectly sized for SIMD
 - OpenMP already enabled via compile flags but not used in the linear_representative.cpp code
+- Moving early pruning before state construction eliminates allocation overhead for pruned branches, yielding marginal 1.13% improvement; deeper algorithmic changes needed for larger gains.
 
 19. **Early exit interleaved hash tables** — KEEP. Reason: Interleaving f/g representatives with symmetric hash tables enables early exit. Total time improved 5.07% vs baseline LTO (2155.7 ms vs 2270.9 ms). Self-equivalence benchmarks now require only 2 le_class_representative calls vs 512. Tradeoff: worst-case non-equivalent slower due to loss of OpenMP parallelism. Added complexity moderate.
