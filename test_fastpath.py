@@ -29,30 +29,42 @@ aes = get_sbox(aes_raw)
 for i in range(10):
     _ = aes.is_invertible()
 
-# Measure is_invertible cost
-n = 1000
-t0 = time.perf_counter()
-for i in range(n):
-    result = aes.is_invertible()
-t1 = time.perf_counter()
-print(f"Cost of {n} is_invertible calls: {(t1-t0)*1000:.3f} ms, avg per call: {(t1-t0)*1e6/n:.1f} us")
-
-# Measure fast path cost (identity_F2AffineMap creation)
-from sboxU.core.f2functions import identity_F2AffineMap
-
-t0 = time.perf_counter()
-for i in range(n):
-    A = identity_F2AffineMap(8)
-    B = identity_F2AffineMap(8)
-t1 = time.perf_counter()
-print(f"Cost of {n} identity_F2AffineMap creations (2 per iter): {(t1-t0)*1000:.3f} ms, avg per iteration: {(t1-t0)*1e6/n:.1f} us")
-
-# Measure full fast path
-from sboxU.ccz.affine_equivalence import affine_equivalence
+# Measure full fast path with same import as benchmark
+from sboxU.ccz import affine_equivalence  # This is how benchmark imports
 aes2 = aes  # same object
 
+n = 1000
 t0 = time.perf_counter()
 for i in range(n):
     result = affine_equivalence(aes, aes2)
 t1 = time.perf_counter()
-print(f"Cost of {n} affine_equivalence calls (fast path): {(t1-t0)*1000:.3f} ms, avg per call: {(t1-t0)*1e6/n:.1f} us")
+print(f"Cost of {n} affine_equivalence calls (fast path, benchmark import): {(t1-t0)*1000:.3f} ms, avg per call: {(t1-t0)*1e6/n:.1f} us")
+
+# Also test with raw list input, like benchmark's prepare_data does (raw list)
+# But benchmark calls ae(aes, aes) where aes is S_box. So test with S_box again but ensure same object.
+print("Testing if fast path objects are same:", aes is aes2)
+
+# Test with different object but same content
+from sboxU.core import get_sbox as gs
+aes3 = get_sbox(aes_raw)
+print("aes3 is aes:", aes3 is aes)
+print("aes3 to_bytes equals aes to_bytes:", aes3.to_bytes() == aes.to_bytes())
+
+t0 = time.perf_counter()
+for i in range(n):
+    result = affine_equivalence(aes3, aes3)
+t1 = time.perf_counter()
+print(f"Cost of {n} affine_equivalence calls (different object, same content): {(t1-t0)*1000:.3f} ms, avg per call: {(t1-t0)*1e6/n:.1f} us")
+
+# Test exact call pattern from benchmark
+def bench_aes_self():
+    ae = affine_equivalence
+    data_aes = aes
+    result = ae(data_aes, data_aes)
+    return result
+
+t0 = time.perf_counter()
+for i in range(n):
+    result = bench_aes_self()
+t1 = time.perf_counter()
+print(f"Cost of {n} benchmark-style calls: {(t1-t0)*1000:.3f} ms, avg per call: {(t1-t0)*1e6/n:.1f} us")
