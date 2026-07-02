@@ -8,84 +8,182 @@ import numpy as np
 
 matplotlib.use("Agg")
 
+
 def load_results(path="results.tsv"):
     df = pd.read_csv(path, sep="\t", comment="#")
     df["experiment"] = range(1, len(df) + 1)
     return df
 
+
+def short_desc(text, max_len=35):
+    text = str(text)
+    if len(text) > max_len:
+        return text[:max_len - 1] + "…"
+    return text
+
+
 def plot_progress(df, metric_col="total_time_ms", output="progress.png"):
-    fig, axes = plt.subplots(2, 1, figsize=(14, 10), dpi=150,
-                              gridspec_kw={"height_ratios": [3, 1]})
+    baseline = df.iloc[0][metric_col]
+    kept = df[df["status"] == "keep"].copy()
+    kept["speedup"] = baseline / kept[metric_col]
+    kept_running = kept[metric_col].cummin()
 
+    fig, axes = plt.subplots(2, 1, figsize=(16, 11), dpi=150,
+                             gridspec_kw={"height_ratios": [3.5, 1]})
+    fig.patch.set_facecolor("white")
+
+    # ---------- Top panel: total time timeline ----------
     ax = axes[0]
-    ax.set_title("sboxU Affine Equivalence — Optimization Timeline", fontsize=16, fontweight="bold")
-    ax.set_xlabel("Experiment #")
-    ax.set_ylabel("Total Time (ms)")
+    ax.set_facecolor("white")
+    ax.set_title("sboxU Affine Equivalence — Optimization Timeline", fontsize=18, fontweight="bold", pad=16)
+    ax.set_xlabel("Experiment #", fontsize=12)
+    ax.set_ylabel("Total Time (ms)", fontsize=12)
+    ax.set_yscale("log")
 
-    # Discarded (gray)
+    # Speedup twin axis
+    ax_speedup = ax.twinx()
+    ax_speedup.set_ylabel("Overall Speedup (×)", fontsize=12, color="darkgreen")
+    ax_speedup.set_yscale("log")
+    ax_speedup.tick_params(axis="y", labelcolor="darkgreen", labelsize=10)
+
+    t_min = max(kept[metric_col].min() * 0.7, df[metric_col].replace(0, np.nan).min() * 0.7)
+    t_max = df[metric_col].max() * 1.15
+    ax.set_ylim(t_min, t_max)
+    ax_speedup.set_ylim(baseline / t_max, baseline / t_min)
+    ax_speedup.grid(False)
+
+    # Discarded points
     discarded = df[df["status"] == "discard"]
     if len(discarded) > 0:
         ax.scatter(discarded["experiment"], discarded[metric_col],
-                   c="lightgray", s=40, zorder=2, label="Discarded", alpha=0.7)
+                   c="#b0b0b0", s=45, zorder=2, label="Discarded", alpha=0.6, edgecolors="none")
 
-    # Crashed (red X)
+    # Crashed points
     crashed = df[df["status"] == "crash"]
     if len(crashed) > 0:
         ax.scatter(crashed["experiment"],
-                   [df[metric_col].max() * 1.05] * len(crashed),
-                   c="red", marker="x", s=60, zorder=2, label="Crash")
+                   [df[metric_col].max() * 1.08] * len(crashed),
+                   c="red", marker="x", s=80, zorder=4, label="Crash", linewidths=2)
 
-    # Kept (green, connected)
-    kept = df[df["status"] == "keep"]
+    # Kept points and line
+    ax.scatter(kept["experiment"], kept[metric_col],
+               c="#27ae60", s=100, zorder=4, edgecolors="#145a32", linewidths=1.2, label="Kept")
+    ax.plot(kept["experiment"], kept[metric_col],
+            c="#27ae60", linewidth=2, zorder=3, alpha=0.8)
+
+    # Running best line
+    ax.step(kept["experiment"], kept_running,
+            c="#145a32", linewidth=2, linestyle="--", alpha=0.7,
+            label="Best so far", where="post", zorder=3)
+
+    # Baseline reference line
+    ax.axhline(y=baseline, color="gray", linestyle=":", alpha=0.5, linewidth=1.5)
+    ax.text(0.02, 0.96, f"baseline: {baseline:.1f} ms",
+            transform=ax.transAxes, fontsize=9, color="gray", va="top", ha="left")
+
+    # Milestone annotations (only major drops, skip baseline)
+    milestones = []
+    prev = baseline
+    for _, row in kept.iterrows():
+        val = row[metric_col]
+        if row["experiment"] == 1:
+            continue
+        if val <= prev * 0.5:
+            milestones.append(row)
+            prev = val
+
+    # Add final best as milestone
     if len(kept) > 0:
-        ax.scatter(kept["experiment"], kept[metric_col],
-                   c="#2ecc71", s=80, zorder=3, edgecolors="darkgreen",
-                   linewidths=0.5, label="Kept")
-        ax.plot(kept["experiment"], kept[metric_col],
-                c="#2ecc71", linewidth=2, zorder=2, alpha=0.7)
+        best_row = kept.loc[kept[metric_col].idxmin()]
+        if best_row["experiment"] not in [m["experiment"] for m in milestones]:
+            milestones.append(best_row)
 
-        # Running best line
-        running_best = kept[metric_col].cummin()
-        ax.step(kept["experiment"], running_best,
-                c="darkgreen", linewidth=1.5, linestyle="--", alpha=0.5,
-                label="Best so far", where="post")
+    for i, row in enumerate(milestones):
+        exp = row["experiment"]
+        val = row[metric_col]
+        speedup = row["speedup"]
+        desc = short_desc(row["description"], 32)
 
-        # Annotate
-        for _, row in kept.iterrows():
-            desc = str(row["description"])[:40]
-            ax.annotate(desc, xy=(row["experiment"], row[metric_col]),
-                        xytext=(5, 10), textcoords="offset points",
-                        fontsize=6, rotation=30, alpha=0.8,
-                        arrowprops=dict(arrowstyle="-", alpha=0.3))
+        # Alternate label placement to reduce overlap
+        above = (i % 2 == 0)
+        y_offset_desc = 18 if above else -18
+        y_offset_speed = -16 if above else 16
+        va_desc = "bottom" if above else "top"
+        va_speed = "top" if above else "bottom"
 
-    ax.legend(loc="upper right")
-    ax.grid(True, alpha=0.3)
+        # Description label
+        ax.annotate(desc,
+                    xy=(exp, val),
+                    xytext=(0, y_offset_desc),
+                    textcoords="offset points",
+                    fontsize=9,
+                    ha="center",
+                    va=va_desc,
+                    alpha=0.9,
+                    bbox=dict(boxstyle="round,pad=0.3", facecolor="white", edgecolor="none", alpha=0.8))
 
-    # Baseline reference
-    baseline = df.iloc[0][metric_col]
-    ax.axhline(y=baseline, color="gray", linestyle=":", alpha=0.5)
-    ax.text(0.02, baseline, f"  baseline: {baseline:.1f} ms",
-            transform=ax.get_yaxis_transform(), fontsize=8, color="gray")
+        # Speedup label
+        ax.annotate(f"{speedup:.1f}×",
+                    xy=(exp, val),
+                    xytext=(0, y_offset_speed),
+                    textcoords="offset points",
+                    fontsize=9,
+                    ha="center",
+                    va=va_speed,
+                    color="darkgreen",
+                    fontweight="bold",
+                    alpha=0.9)
 
-    # Bottom: per-benchmark breakdown
+    ax.legend(loc="lower left", fontsize=10, framealpha=0.95)
+    ax.grid(True, alpha=0.25, which="both", linestyle="-")
+    ax.tick_params(axis="both", labelsize=10)
+
+    # Summary text box
+    final_best = kept[metric_col].min()
+    final_speedup = baseline / final_best
+    summary_text = (
+        f"Baseline: {baseline:.1f} ms\n"
+        f"Best: {final_best:.3f} ms\n"
+        f"Speedup: {final_speedup:,.0f}×\n"
+        f"({(1 - final_best / baseline) * 100:.1f}% faster)"
+    )
+    ax.text(0.98, 0.98, summary_text,
+            transform=ax.transAxes,
+            fontsize=11,
+            verticalalignment="top",
+            horizontalalignment="right",
+            bbox=dict(boxstyle="round,pad=0.5", facecolor="#f8f9fa", edgecolor="#27ae60", linewidth=1.5, alpha=0.95))
+
+    # ---------- Bottom panel: per-benchmark breakdown ----------
     ax2 = axes[1]
-    ax2.set_title("Benchmark Breakdown (kept)")
-    ax2.set_xlabel("Experiment #")
-    ax2.set_ylabel("ms")
+    ax2.set_facecolor("white")
+    ax2.set_title("Benchmark Breakdown (kept experiments)", fontsize=13, pad=10)
+    ax2.set_xlabel("Experiment #", fontsize=12)
+    ax2.set_ylabel("Time (ms, log scale)", fontsize=12)
+    ax2.set_yscale("log")
 
     bench_cols = [c for c in df.columns if c.endswith("_ms") and c != metric_col]
-    colors = plt.cm.Set1(np.linspace(0, 1, max(len(bench_cols), 1)))
+    labels = {
+        "aes_self_ms": "AES self-equiv",
+        "random_self_ms": "Random self-equiv",
+        "random_nonequiv_ms": "Random non-equivalent",
+    }
+    colors = {"aes_self_ms": "#e74c3c", "random_self_ms": "#f39c12", "random_nonequiv_ms": "#7f8c8d"}
 
     if len(kept) > 0:
-        for bench, color in zip(bench_cols, colors):
+        for bench in bench_cols:
             if bench in kept.columns:
+                label = labels.get(bench, bench)
+                color = colors.get(bench, None)
                 ax2.plot(kept["experiment"], kept[bench], marker="o",
-                         markersize=4, label=bench, color=color, linewidth=1.5)
-        ax2.legend(loc="upper right", fontsize=8, ncol=3)
-        ax2.grid(True, alpha=0.3)
+                         markersize=5, label=label, color=color, linewidth=1.8)
+        ax2.legend(loc="upper right", fontsize=10, ncol=3, framealpha=0.95)
+        ax2.grid(True, alpha=0.25)
+        ax2.tick_params(axis="both", labelsize=10)
 
     plt.tight_layout()
-    plt.savefig(output, bbox_inches="tight")
+    plt.subplots_adjust(top=0.92)
+    plt.savefig(output, bbox_inches="tight", facecolor="white")
     print(f"Saved: {output}")
 
     # Summary
@@ -98,6 +196,7 @@ def plot_progress(df, metric_col="total_time_ms", output="progress.png"):
     if len(kept) > 1:
         improvement = (1 - kept[metric_col].min() / kept.iloc[0][metric_col]) * 100
         print(f"Baseline: {kept.iloc[0][metric_col]:.1f} ms → Best: {kept[metric_col].min():.1f} ms ({improvement:.1f}%)")
+
 
 if __name__ == "__main__":
     plot_progress(load_results())
