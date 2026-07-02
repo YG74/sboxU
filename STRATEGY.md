@@ -1,8 +1,8 @@
 # Optimization Strategy — Affine Equivalence Speed
 
 ## Current State
-- **Best total_time_ms**: 1185.309 (91% improvement over baseline)
-- **Iteration count**: 1
+- **Best total_time_ms**: 2270.893 (after LTO)
+- **Iteration count**: 2
 
 ## Bottleneck Analysis
 | Benchmark | Value (ms) | % of total | Priority |
@@ -45,6 +45,8 @@ Improvements must exceed 2σ noise band to be considered real.
 
 ## Ideas Already Tried
 3. **Parallelize le_class_representative calls (OpenMP)** — SUCCESS: total_time improved by 56%. Reason: The 256 independent calls to `le_class_representative` are now run in parallel using OpenMP, achieving near-linear speedup on available cores.
+15. **Branchless shift for fastset_t (reduce branch mispredictions)** — DISCARD. Reason: Attempting to replace conditional branches with SIMD blends led to a severe performance regression (total_time ~5451 ms vs best 1185 ms). The branchless implementation increased code size and complexity, causing instruction cache pressure and/or unintended branch mispredictions that negated any benefits. Correctness may also be compromised.
+16. **Link-time optimization (-flto)** — KEEP. Reason: Enabling LLVM/GCC LTO improved total time by 3.48% (2352.8 ms → 2270.9 ms). AES self-equivalence improved by 8.3%, random_nonequiv by 1.4%, but random_self regressed by 20.7%. The net effect is an overall improvement in total time. Simplification: LTO adds no code complexity, just a compiler flag. Correctness is preserved.
 
 ## Exhausted Approaches
 (none yet)
