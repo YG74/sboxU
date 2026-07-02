@@ -19,14 +19,7 @@ template<typename set_t, typename int_type> struct tstate_t
         std::vector<int_type> A;
         std::vector<int_type> B;
         std::vector<int_type> R_S;
-        set_t D_A;
-        set_t D_B;
-        set_t C_A;
-        set_t C_B;
-        set_t N_A;
-        set_t N_B;
-        set_t U_A;
-        set_t U_B;
+        set_t D_A, D_B, N_A, N_B, U_A, U_B, C_A, C_B;
 };
 
 

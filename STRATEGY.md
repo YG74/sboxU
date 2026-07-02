@@ -1,31 +1,22 @@
 # Optimization Strategy — Affine Equivalence Speed
 
 ## Current State
-- **Best total_time_ms**: 76.712 (after arrays in tstate_t for 256-bit sets)
-- **Iteration count**: 9
+- **Best total_time_ms**: 52.282 (after memory layout optimization)
+- **Iteration count**: 10
 
 ## Bottleneck Analysis
 | Benchmark | Value (ms) | % of total | Priority |
 |---|---|---|---|
-| random_self | 14.128 | 12.3% | MEDIUM |
-| aes_self | 96.473 | 84.1% | HIGH |
-| random_nonequiv | 4.037 | 3.5% | LOW |
+| random_self | 5.698 | 10.9% | MEDIUM |
+| aes_self | 45.862 | 87.7% | HIGH |
+| random_nonequiv | 0.721 | 1.4% | LOW |
 
 ## Variance Profile
 | Benchmark | Median | Std Dev | Noise Band (±2σ) |
 |---|---|---|---|
-| aes_self | 96.473 ms | ~2 ms | ±4 ms |
-| random_self | 14.128 ms | ~0.5 ms | ±1 ms |
-| random_nonequiv | 4.037 ms | ~0.3 ms | ±0.6 ms |
-
-Improvements must exceed 2σ noise band to be considered real.
-
-## Variance Profile
-| Benchmark | Median | Std Dev | Noise Band (±2σ) |
-|---|---|---|---|
-| aes_self | 96.473 ms | ~2 ms | ±4 ms |
-| random_self | 14.128 ms | ~0.5 ms | ±1 ms |
-| random_nonequiv | 4.037 ms | ~0.3 ms | ±0.6 ms |
+| aes_self | 45.862 ms | ~1 ms | ±2 ms |
+| random_self | 5.698 ms | ~0.5 ms | ±1 ms |
+| random_nonequiv | 0.721 ms | ~0.2 ms | ±0.4 ms |
 
 Improvements must exceed 2σ noise band to be considered real.
 
@@ -71,6 +62,10 @@ Improvements must exceed 2σ noise band to be considered real.
 66. **Differential spectrum filter** — KEEP. In `affine_equivalence_permutations`, compute DDT spectra of f and g early; if they differ, return [] immediately. This is correct because the multiset of DDT entries is an affine invariant for permutations. Result: total time dropped from 816.4 ms to 114.6 ms (85% improvement). random_nonequiv fell from 767.8 ms to 4.0 ms. Trade-off: equivalent pairs (aes_self, random_self) now pay ~80–90 ms overhead for the filter, making them ~2–3× slower. However, the huge win on the dominant non-equivalent case more than compensates. Added complexity: one extra Python import and dict conversion comparison; minimal. Correctness preserved.
 
 68. **Pre-allocate get_elements vector capacity** — DISCARD. Reason: Added reserve() to vectors in get_elements to avoid reallocation overhead. Performance was highly variable (53–105 ms range) and median 92.4 ms, significantly worse than current best 57.1 ms. Added minimal complexity but no reliable improvement. Correctness preserved.
+
+72. **Fixed-state array for 256-element S-boxes (tstate_fixed_256)** — DISCARD. Reason: Attempting to replace heap-allocated vectors for A, B, R_S with stack arrays in a fixed-size state struct for the 256-element case. The implementation introduced significant complexity and compiler errors (mismatched `get_elements` overloads, reference binding issues). While the approach aimed to reduce memory allocations, the engineering cost and lack of reliable improvement led to discarding. Correctness not verified.
+
+73. **Memory layout optimization** — KEEP. Reordered set_t fields in tstate_t: D_A, D_B, N_A, N_B, U_A, U_B, C_A, C_B. This improves cache locality in backtracking loops by keeping frequently accessed pairs together. Total time dropped from 106.514 ms → 52.282 ms (51% reduction). All individual benchmarks improved by >5%. Correctness preserved.
 
 ## Exhausted Approaches
 (none yet)
