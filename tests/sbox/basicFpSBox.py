@@ -269,6 +269,7 @@ def main_test():
         section('Inversion')
         subsection('Identity S-box')
         # --- { 
+        id_sb = S_box_fp.identity_S_box(2, 3)
         if fp_lut_eq(id_sb.get_lut(), u.get_input_space()):
             success("identity_S_box(2,3) maps every input to itself")
         else:
@@ -784,7 +785,7 @@ def main_test():
             fail("derivative of zero function is not zero: {}".format(
                 [list(y) for y in d_zero_fn]))
         # --- } 
-        subsection('Second derivative is symmetric')
+        subsection('Derivation is commutative')
         # --- { 
         da = [1, 0]
         db = [0, 1]

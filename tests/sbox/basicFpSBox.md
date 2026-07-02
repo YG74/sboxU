@@ -404,6 +404,7 @@ else:
 $\mathbb{F}_p^t$.
 
 ```python
+id_sb = S_box_fp.identity_S_box(2, 3)
 if fp_lut_eq(id_sb.get_lut(), u.get_input_space()):
     success("identity_S_box(2,3) maps every input to itself")
 else:
