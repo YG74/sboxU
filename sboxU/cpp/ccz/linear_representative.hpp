@@ -25,5 +25,10 @@ inline cpp_S_box cpp_le_class_representative(
     return cpp_le_class_representative(f, A, B);
 };
 
+// Parallel computation of linear representatives for multiple translations
+std::vector<cpp_S_box> parallel_compute_le_class_representatives(
+    const std::vector<cpp_S_box>& sboxes
+);
+
 
 #endif

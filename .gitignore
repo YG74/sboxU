@@ -16,3 +16,8 @@ build
 ## Claude
 
 CLAUDE.md
+
+## AGR artifacts (local to each machine)
+
+results.tsv
+progress.png

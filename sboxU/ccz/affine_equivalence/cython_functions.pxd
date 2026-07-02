@@ -1,6 +1,7 @@
 # -*- python -*-
 
 from sboxU.cython_types cimport *
+from libcpp.vector cimport vector
 
 from sboxU.core cimport *
 from sboxU.statistics cimport *
@@ -13,10 +14,14 @@ cdef extern from "../../cpp/ccz/linear_representative.hpp":
         const cpp_S_box f,
         cpp_F2AffineMap & A,
         cpp_F2AffineMap & B
-    )
+    ) nogil
 
     cpp_S_box cpp_le_class_representative(
         const cpp_S_box f,
+    ) nogil
+
+    vector[cpp_S_box] parallel_compute_le_class_representatives(
+        const vector[cpp_S_box]& sboxes
     )
 
 cdef extern from "../../cpp/ccz/linear_representative.cpp":

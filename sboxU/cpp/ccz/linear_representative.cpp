@@ -1219,3 +1219,19 @@ cpp_S_box cpp_le_class_representative(
     return cpp_S_box(result[0]);
 }
 
+// Parallel computation of linear representatives for multiple translations
+#include <omp.h>
+std::vector<cpp_S_box> parallel_compute_le_class_representatives(
+    const std::vector<cpp_S_box>& sboxes
+) {
+    size_t n = sboxes.size();
+    std::vector<cpp_S_box> reps(n);
+
+    #pragma omp parallel for
+    for (size_t i = 0; i < n; i++) {
+        reps[i] = cpp_le_class_representative(sboxes[i]);
+    }
+
+    return reps;
+}
+

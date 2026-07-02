@@ -1,5 +1,6 @@
 # -*- python -*-
 
+from libcpp.vector cimport vector
 
 from sboxU.core import get_sbox, oplus
 from sboxU.core.sbox import F2_trans
@@ -58,6 +59,28 @@ def le_class_representative(s):
         raise NotImplementedError("Linear representatives can only be computed for permutations")
 
 
+
+
+def compute_all_le_reps_parallel(list sbox_list):
+    """Compute linear class representatives for a list of S_boxes in parallel.
+    Returns a list of S_box objects.
+    """
+    cdef vector[cpp_S_box] cpp_sboxes
+    cpp_sboxes.reserve(len(sbox_list))
+    cdef S_box sb
+    for sb in sbox_list:
+        cpp_sboxes.push_back(dereference((<S_box>sb).cpp_sb))
+
+    cdef vector[cpp_S_box] reps = parallel_compute_le_class_representatives(cpp_sboxes)
+
+    results = []
+    cdef S_box new_sb
+    cdef cpp_S_box rep
+    for rep in reps:
+        new_sb = S_box()
+        new_sb.set_inner_sbox(rep)
+        results.append(new_sb)
+    return results
 
 
 def linear_equivalence(f, g, all_mappings=False):
@@ -152,11 +175,13 @@ def affine_equivalence_permutations(f, g):
     table = defaultdict(int)
     n= sf.get_input_length()
     tr = [F2_trans(c,bit_length = n) for c in sf.input_space()] # translations
-    for c in sf.input_space():
-        table[le_class_representative(tr[c] * sf)] = c
+    translations = [tr[c] * sf for c in sf.input_space()]
+    reps = compute_all_le_reps_parallel(translations)
+    for i, rep in enumerate(reps):
+        table[rep] = i
     rs = []
     a = -1
-    b = -1    
+    b = -1
     for c in sf.input_space():
         g_c = le_class_representative(sg * tr[c])
         if g_c in table.keys():
