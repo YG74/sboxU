@@ -9,6 +9,9 @@ from typing import Union
 from sage.all import Integer as sage_Integer
 from sage.all import ceil, floor
 
+# Simple cache for get_sbox from lists to avoid repeated C++ construction
+_sbox_cache = {}
+
 from libcpp.memory cimport unique_ptr, make_unique
 from libcpp.utility cimport move
 from cython.operator cimport dereference
@@ -957,18 +960,28 @@ def get_sbox(s, name=None, input_casts=[], output_casts=[]) -> Union[S_box, S_bo
         output_cast: the function to apply to the integer output when querying the LUT.
 
     """
+    # Fast path: try to use cache for simple list construction (no name, no casts)
+    if isinstance(s, list) and name is None and input_casts == [] and output_casts == []:
+        cache_key = id(s)
+        if cache_key in _sbox_cache:
+            return _sbox_cache[cache_key]
 
     if isinstance(s, (S_box, S_box_fp)):
-        return s
+        result = s
     else:
         t = type(s)
         if t in SBOXU_TYPE_TO_FACTORY.keys():
-            return SBOXU_TYPE_TO_FACTORY[t](s, name, input_casts, output_casts)
+            result = SBOXU_TYPE_TO_FACTORY[t](s, name, input_casts, output_casts)
         elif isinstance(s, Polynomial):
-            # this separate test is needed because `Polynomial` is not a real type, it is a collection of types
-            return SBOXU_TYPE_TO_FACTORY[Polynomial](s, name, input_casts, output_casts)
+            result = SBOXU_TYPE_TO_FACTORY[Polynomial](s, name, input_casts, output_casts)
         else:
             raise NotImplementedError("Cannot build an Sbox from this input type")
+
+    # Populate cache if conditions match
+    if isinstance(s, list) and name is None and input_casts == [] and output_casts == []:
+        _sbox_cache[id(s)] = result
+
+    return result
             
 
         
