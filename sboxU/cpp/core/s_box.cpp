@@ -167,6 +167,12 @@ Bytearray cpp_S_box::to_bytes() const
     }
 }
 
+// External C function for comparing two cpp_S_box objects
+extern "C"
+bool cpp_S_box_eq(const cpp_S_box & s1, const cpp_S_box & s2) {
+    return (s1 == s2);
+}
+
 
 // !SECTION! More sophisticated operations
 

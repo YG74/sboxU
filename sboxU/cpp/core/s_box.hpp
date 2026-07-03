@@ -139,4 +139,8 @@ std::vector<BinWord> cpp_anf_component( const cpp_S_box & f);
 cpp_Spectrum cpp_degree_spectrum(const cpp_S_box &f);
 
 
+// External C function for comparing two cpp_S_box objects
+extern "C"
+bool cpp_S_box_eq(const cpp_S_box & s1, const cpp_S_box & s2);
+
 #endif

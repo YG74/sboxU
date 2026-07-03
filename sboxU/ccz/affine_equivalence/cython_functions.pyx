@@ -9,7 +9,6 @@ from collections import defaultdict
 from sboxU.statistics import differential_spectrum, early_differential_spectrum_compare
 from sboxU.core.f2functions import identity_F2AffineMap
 
-
 from cython.operator cimport dereference
 
 
