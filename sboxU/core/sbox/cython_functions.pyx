@@ -402,16 +402,16 @@ cdef class S_box:
         """
         return dereference(self.cpp_sb).is_invertible()
 
-    
+
     def inverse(self) -> S_box | Exception:
         """Returns:
-            An S_box instance corresponding to the compositional inverse of the current S_box.
+            An S_box instance corresponding to the compositional inverse of the current S-box.
 
-        If the current S_box is not invertible, will probably crash.
+        If the current S-box is not invertible, will probably crash.
         """
         if self.is_invertible():
             name = self.cpp_name + b"^-1"
-            result = S_box(name=name) 
+            result = S_box(name=name)
             (<S_box>result).set_inner_sbox(dereference(self.cpp_sb).inverse())
             return result
         else:

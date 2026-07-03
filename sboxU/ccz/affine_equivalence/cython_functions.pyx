@@ -167,17 +167,15 @@ def affine_equivalence_permutations(f, g):
     # Fast path: object identity implies self-equivalence (avoids to_bytes() conversion)
     if sf is sg:
         n = sf.get_input_length()
-        identity_A = identity_F2AffineMap(n)
-        identity_B = identity_F2AffineMap(n)
-        return [identity_A, 0, identity_B, 0]
+        identity = identity_F2AffineMap(n)
+        return [identity, 0, identity, 0]
 
     # Fast path for self-equivalence with different object instances: f == g => identity mapping is a solution
-    # Use bytestring comparison for speed instead of Python loop in __eq__
-    if sf.to_bytes() == sg.to_bytes():
+    # Use direct C++ memory comparison (cpp_eq) for speed instead of to_bytes() allocation + Python loop
+    if sf.get_output_length() == sg.get_output_length() and sf.cpp_eq(sg):
         n = sf.get_input_length()
-        identity_A = identity_F2AffineMap(n)
-        identity_B = identity_F2AffineMap(n)
-        return [identity_A, 0, identity_B, 0]
+        identity = identity_F2AffineMap(n)
+        return [identity, 0, identity, 0]
 
     # Quick filter: differential spectrum is an affine invariant for permutations
     # If the differential spectra differ, f and g cannot be affine equivalent.

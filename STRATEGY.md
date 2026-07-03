@@ -1,11 +1,12 @@
 # Optimization Strategy — Affine Equivalence Speed
 
 ## Current State
-- **Best total_time_ms**: 0.300 (after fast path byte comparison)
-- **Best commit**: `a59f13ee9775e630900a8fc13beaa603b99a89b9`
-- **Iteration count**: 41
-- **Experiments logged**: 35 (19 kept, 16 discarded, 0 crashed)
-- **Overall speedup**: 2720.7 ms → 0.300 ms (≈99.99%)
+- **Best total_time_ms**: 0.277 (after `cpp_eq` fast path + `to_bytes()` optimization)
+- **Best commit**: `a2c8fcb` (current HEAD)
+- **Iteration count**: 43
+- **Experiments logged**: 37 (19 kept, 18 discarded, 0 crashed)
+- **Overall speedup**: 2720.7 ms → 0.277 ms (≈99.99%)
+- **Current typical median**: ~0.280 ms (range 0.277-0.285) — stable after recent stack-rr based hash discard.
 
 ## Bottleneck Analysis
 | Benchmark | Value (ms) | % of total | Priority |
@@ -90,6 +91,14 @@ Improvements must exceed 2σ noise band to be considered real.
 
 - **Fixed-state array for 256-element S-boxes (tstate_fixed_256)** — DISCARD. Compiler errors and complexity; no performance gain.
 - **Eliminate temporary DDT rows in differential spectrum compare** — DISCARD. Replaced `cpp_ddt_row` with direct counting; introduced branch misprediction overhead, causing ~12% regression.
+
+- **Early object identity fast path in affine_equivalence** — DISCARD. Total time increased from 0.300 ms to 0.338 ms (12.7% regression). The identity map construction overhead outweighs the cost of S_box creation + to_bytes comparison.
+
+- **Cached identity maps fast path in affine_equivalence** — DISCARD. Total time 0.327 ms vs best 0.300 ms (9% regression). Cache prevents identity map construction but adds lookup overhead; still slower than plain to_bytes comparison. Correctness PASS.
+
+- **Identity map reuse + cpp_eq** — DISCARD. Combined reusing single identity map for both A and B, and replacing `to_bytes()` with `cpp_eq` method. Total time 0.340 ms vs best 0.288 ms; no improvement beyond noise band ±0.02 ms; not statistically significant. Correctness PASS.
+
+- **Replace Python hash with C++ hash function** — DISCARD. Added `cpp_S_box_hash` in C++ (FNV-1a style) and updated `S_box.__hash__` to call it directly. Benchmark total 0.333–0.352 ms vs 0.277 ms baseline; `random_self` regressed >5%; no gain within ±0.02 ms noise. Correctness PASS.
 
 ## Exhausted Approaches
 - **Memory allocation reduction in subroutine** — Tried pre-allocation with `reserve()`, stack buffers, and arena allocators. All regressed due to overhead or complexity.
