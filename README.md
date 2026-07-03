@@ -34,8 +34,8 @@ This fork contains a major speed optimization of the affine equivalence check (B
   - Self-equivalence fast path with byte comparison
   - Incremental differential spectrum comparison
   - Cache-friendly state representation and pruning
-- **Correctness**: verified with `benchmark.py --verify` and `tests/ccz/test_ea_mapping_from_vq.py`. A batch of post-optimization micro-optimizations introduced a correctness regression and was reverted; the current state is the last known-good, passing commit.
-- **Details**: see `STRATEGY.md` and `results.tsv` for the full experiment log.
+- **Correctness**: verified with `experiments/affine-equivalence/benchmark.py --verify` and `tests/ccz/test_ea_mapping_from_vq.py`. A batch of post-optimization micro-optimizations introduced a correctness regression and was reverted; the current state is the last known-good, passing commit.
+- **Details**: see `experiments/affine-equivalence/STRATEGY.md` and `experiments/affine-equivalence/results.tsv` for the full experiment log.
 
 If you use `sboxU` in a published paper, please cite it using the following bibtex entry:
 

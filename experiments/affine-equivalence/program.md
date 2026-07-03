@@ -42,9 +42,9 @@ Read `results.tsv` and `STRATEGY.md` to know where you are.
 
 ### Step 3: Implement
 - Keep changes small and focused — one idea per experiment
-- **CAN modify**: any file in sboxU/ (Python, Cython .pyx, C++ .cpp/.h)
+- **CAN modify**: any file in `/home/gleb/sboxU/sboxU/` (Python, Cython .pyx, C++ .cpp/.h)
 - **CANNOT modify**: benchmark.py, baseline_checksums.json, run_agr.sh, analysis.py, STRATEGY.md formatting
-- After changing C++/Cython code, rebuild with `/mnt/sda1/miniconda3/envs/sage/bin/sage --python setup.py build_ext --inplace`
+- After changing C++/Cython code, rebuild with `cd /home/gleb/sboxU && /mnt/sda1/miniconda3/envs/sage/bin/sage --python setup.py build_ext --inplace`
 
 ### Step 4: Build (if needed)
 ```bash
@@ -55,7 +55,7 @@ If build fails: fix if trivial, log as "crash" if fundamental.
 
 ### Step 5: Benchmark
 ```bash
-cd /home/gleb/sboxU && /mnt/sda1/miniconda3/envs/sage/bin/sage --python benchmark.py --verify
+cd /home/gleb/sboxU && /mnt/sda1/miniconda3/envs/sage/bin/sage --python experiments/affine-equivalence/benchmark.py --verify
 ```
 
 ### Step 6: Decide Keep or Discard
@@ -71,7 +71,7 @@ cd /home/gleb/sboxU && /mnt/sda1/miniconda3/envs/sage/bin/sage --python benchmar
 - Build crashed and can't be fixed
 - Small improvement but significant added complexity
 
-If DISCARD: `git checkout -- sboxU/`
+If DISCARD: `cd /home/gleb/sboxU && git checkout -- sboxU/`
 
 ### Step 7: Log Results
 Append to `results.tsv` (TAB-separated):
