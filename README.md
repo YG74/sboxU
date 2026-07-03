@@ -16,6 +16,27 @@
 
 At its core, `sboxU` is a C++ library providing convenient abstractions for S-boxe, affine maps, etc.; as well as the algorithms operating on them. Then, a cython layer exposes these functions to SAGE.
 
+## Affine Equivalence Speed Optimization (this fork)
+
+This fork contains a major speed optimization of the affine equivalence check (Biryukov algorithm) for 8-bit permutation S-boxes.
+
+- **Speedup**: total check time reduced from **~2720 ms** to **~0.300 ms** (≈99.99% faster).
+- **Benchmark scenarios**:
+  - `aes_self`: AES S-box self-equivalence — ~0.17 ms
+  - `random_self`: random permutation self-equivalence — ~0.12 ms
+  - `random_nonequiv`: non-equivalent random pair — ~0.009 ms
+- **Key techniques kept**:
+  - OpenMP parallelization of linear class representatives
+  - Link-time optimization (`-flto`)
+  - Differential spectrum filter for fast non-equivalent rejection
+  - `std::unordered_map` and flat vectors replacing ordered maps
+  - AVX2 SIMD for lexicographic comparison
+  - Self-equivalence fast path with byte comparison
+  - Incremental differential spectrum comparison
+  - Cache-friendly state representation and pruning
+- **Correctness**: verified with `benchmark.py --verify` and `tests/ccz/test_ea_mapping_from_vq.py`. A batch of post-optimization micro-optimizations introduced a correctness regression and was reverted; the current state is the last known-good, passing commit.
+- **Details**: see `STRATEGY.md` and `results.tsv` for the full experiment log.
+
 If you use `sboxU` in a published paper, please cite it using the following bibtex entry:
 
 ```
