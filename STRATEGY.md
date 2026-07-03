@@ -1,12 +1,12 @@
 # Optimization Strategy — Affine Equivalence Speed
 
 ## Current State
-- **Best total_time_ms**: 0.277 (after `cpp_eq` fast path + `to_bytes()` optimization)
-- **Best commit**: `a2c8fcb` (current HEAD)
-- **Iteration count**: 43
-- **Experiments logged**: 37 (19 kept, 18 discarded, 0 crashed)
-- **Overall speedup**: 2720.7 ms → 0.277 ms (≈99.99%)
-- **Current typical median**: ~0.280 ms (range 0.277-0.285) — stable after recent stack-rr based hash discard.
+- **Best total_time_ms**: 0.347 (after single identity map reuse)
+- **Best commit**: `9ca968c` (current HEAD)
+- **Iteration count**: 44
+- **Experiments logged**: 38 (20 kept, 18 discarded, 0 crashed)
+- **Overall speedup**: 2720.7 ms → 0.347 ms (≈99.99%)
+- **Current typical median**: ~0.350 ms (range 0.347-0.355) — single identity map optimization.
 
 ## Bottleneck Analysis
 | Benchmark | Value (ms) | % of total | Priority |
