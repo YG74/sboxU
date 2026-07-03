@@ -21,3 +21,12 @@ CLAUDE.md
 
 results.tsv
 progress.png
+
+## Generated test / script artifacts
+
+apnDB.db
+.pytest_cache/
+dist/
+*.pyc
+.coverage
+htmlcov/
