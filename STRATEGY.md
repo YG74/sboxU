@@ -1,12 +1,15 @@
 # Optimization Strategy — Affine Equivalence Speed
 
 ## Current State
-- **Best total_time_ms**: 0.347 (after single identity map reuse)
-- **Best commit**: `9ca968c` (current HEAD)
-- **Iteration count**: 44
-- **Experiments logged**: 38 (20 kept, 18 discarded, 0 crashed)
-- **Overall speedup**: 2720.7 ms → 0.347 ms (≈99.99%)
-- **Current typical median**: ~0.350 ms (range 0.347-0.355) — single identity map optimization.
+- **Best total_time_ms**: 0.300
+- **Best commit**: `a59f13ee9775e630900a8fc13beaa603b99a89b9` (fast path byte comparison)
+- **Current HEAD/reverted state**: code rolled back to `a59f13e` after correctness regression
+- **Iteration count**: 45
+- **Experiments logged**: 39 (21 kept, 18 discarded, 0 crashed)
+- **Overall speedup**: 2720.7 ms → 0.300 ms (≈99.99%)
+- **Current typical median**: ~0.300 ms
+- **Correctness regression found**: commits after `a59f13e` broke `are_ea_equivalent` / `tests/ccz/test_ea_mapping_from_vq.py` due to unsafe `get_sbox` list cache keyed by `id(list)`. Code reverted to last known-good state; tests now pass.
+
 
 ## Bottleneck Analysis
 | Benchmark | Value (ms) | % of total | Priority |
@@ -65,9 +68,11 @@ Improvements must exceed 2σ noise band to be considered real.
 18. **Identity check before bytestring comparison** — KEEP. Added `sf is sg` check before `to_bytes()` to avoid allocation for same-object calls. Total time 0.303 ms (within ±0.02 ms noise band; no significant change vs baseline). Correctness PASS.
 19. **Reduce redundant is_invertible calls** — KEEP. Combined `is_invertible` checks in `affine_equivalence` into a single OR condition and removed duplicate checks in `affine_equivalence_permutations`. Total time 0.304 ms (within ±0.02 ms noise band vs best 0.300 ms). Correctness PASS.
 
-20. **Reuse single identity map for both A and B in fast path** — KEEP. In both self-equivalence fast paths, construct one `identity_F2AffineMap(n)` and reuse it for both A and B (instead of constructing two separate objects). Total time 0.288 ms (vs prior 0.300 ms). Correctness PASS.
+20. **Reuse single identity map for both A and B in fast path** — RE-EVALUATED / DISCARDED. Initially thought to improve total time to 0.288 ms, but later discovered this batch of post-`a59f13e` changes correlated with a correctness regression in `are_ea_equivalent`. Reverted along with related micro-optimizations to restore a known-good state.
 
-21. **Replace to_bytes() equality check with memcpy-based cpp_eq** — KEEP. Replaced Python bytestring comparison (`sf.to_bytes() == sg.to_bytes()`) with direct C++ memory comparison via new `cpp_eq` method (~20x faster for distinct equal S-boxes). Benchmark unchanged because existing suite uses identical objects (hits `sf is sg` fast path), but equality operation itself is significantly faster. Correctness PASS.
+21. **Replace to_bytes() equality check with memcpy-based cpp_eq** — RE-EVALUATED / DISCARDED. Added C++ `cpp_eq` fast comparison. Benchmarks did not improve beyond noise and the change was part of the post-`a59f13e` batch that correlated with the `are_ea_equivalent` regression. Reverted.
+
+22. **Global identity map cache for n=8** — RE-EVALUATED / DISCARDED. Module-level cached identity map for n=8; no reliable improvement beyond noise and part of the post-`a59f13e` regression batch. Reverted.
 
 ## Discarded Ideas
 
@@ -85,7 +90,7 @@ Improvements must exceed 2σ noise band to be considered real.
 - **AVX-512 support** — DISCARD. Not available on this CPU.
 - **Spectrum equality optimization** — DISCARD. 1.08% total regression; random_self regressed >5%.
 - **Stack-allocated count buffers in differential spectrum compare** — DISCARD. 5.7% total regression.
-- **Memoize get_sbox for list inputs** — DISCARD. Improvement within noise; added global cache complexity.
+- **Memoize get_sbox for list inputs (id-based cache)** — DISCARD. The cache keyed by `id(list)` is unsafe: Python can reuse the memory address of a freed list for a new list, causing `get_sbox` to return a stale/incorrect S-box. This broke `are_ea_equivalent` and `tests/ccz/test_ea_mapping_from_vq.py`. Removed.
 
 - **Use C++ operator== in self-equivalence fast path** — DISCARD. Build failed due to Cython `unique_ptr` type incompatibility; reverted to `to_bytes()` comparison.
 

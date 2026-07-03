@@ -39,10 +39,9 @@ cdef extern from "../../cpp/core/s_box.hpp":
     cpp_S_box cpp_translation(const BinWord a, const int64_t input_bit_length)
 
 
-# !SUBSECTION! Loading the cpp file
+# !SUBSECTION! Loading the cpp file 
 cdef extern from "../../cpp/core/s_box.cpp":
-    bool cpp_S_box_eq(const cpp_S_box & s1, const cpp_S_box & s2)
-    bool cpp_S_box_eq_fast(const cpp_S_box & s1, const cpp_S_box & s2)
+    pass
 
 # !SUBSECTION! The cpp_S_box_fp class, header only hence no cpp file down below
 

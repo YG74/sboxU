@@ -3,15 +3,11 @@
 from sboxU.core.f2functions cimport *
 from sboxU.core.f2functions import ffe_to_int, to_bin, from_bin, i2f_and_f2i
 from sboxU.core.sbox.linearCasts import casts_from_field
-from sboxU.core.sbox.cython_functions cimport cpp_S_box_eq_fast
 
 from typing import Union
 
 from sage.all import Integer as sage_Integer
 from sage.all import ceil, floor
-
-# Simple cache for get_sbox from lists to avoid repeated C++ construction
-_sbox_cache = {}
 
 from libcpp.memory cimport unique_ptr, make_unique
 from libcpp.utility cimport move
@@ -159,10 +155,7 @@ cdef class S_box:
     def __ne__(self, s) -> bool:
         return not self.__eq__(s)
 
-    def cpp_eq(self, S_box other) -> bool:
-        """Fast internal equality check using direct memory comparison."""
-        return cpp_S_box_eq_fast(self.cpp_sb.get()[0], other.cpp_sb.get()[0])
-
+        
     def __getitem__(self, BinWord x) -> BinWord:
         """Querying the S-box on a specific integer.
         
@@ -402,16 +395,16 @@ cdef class S_box:
         """
         return dereference(self.cpp_sb).is_invertible()
 
-
+    
     def inverse(self) -> S_box | Exception:
         """Returns:
-            An S_box instance corresponding to the compositional inverse of the current S-box.
+            An S_box instance corresponding to the compositional inverse of the current S_box.
 
-        If the current S-box is not invertible, will probably crash.
+        If the current S_box is not invertible, will probably crash.
         """
         if self.is_invertible():
             name = self.cpp_name + b"^-1"
-            result = S_box(name=name)
+            result = S_box(name=name) 
             (<S_box>result).set_inner_sbox(dereference(self.cpp_sb).inverse())
             return result
         else:
@@ -964,28 +957,18 @@ def get_sbox(s, name=None, input_casts=[], output_casts=[]) -> Union[S_box, S_bo
         output_cast: the function to apply to the integer output when querying the LUT.
 
     """
-    # Fast path: try to use cache for simple list construction (no name, no casts)
-    if isinstance(s, list) and name is None and input_casts == [] and output_casts == []:
-        cache_key = id(s)
-        if cache_key in _sbox_cache:
-            return _sbox_cache[cache_key]
 
     if isinstance(s, (S_box, S_box_fp)):
-        result = s
+        return s
     else:
         t = type(s)
         if t in SBOXU_TYPE_TO_FACTORY.keys():
-            result = SBOXU_TYPE_TO_FACTORY[t](s, name, input_casts, output_casts)
+            return SBOXU_TYPE_TO_FACTORY[t](s, name, input_casts, output_casts)
         elif isinstance(s, Polynomial):
-            result = SBOXU_TYPE_TO_FACTORY[Polynomial](s, name, input_casts, output_casts)
+            # this separate test is needed because `Polynomial` is not a real type, it is a collection of types
+            return SBOXU_TYPE_TO_FACTORY[Polynomial](s, name, input_casts, output_casts)
         else:
             raise NotImplementedError("Cannot build an Sbox from this input type")
-
-    # Populate cache if conditions match
-    if isinstance(s, list) and name is None and input_casts == [] and output_casts == []:
-        _sbox_cache[id(s)] = result
-
-    return result
             
 
         

@@ -167,21 +167,6 @@ Bytearray cpp_S_box::to_bytes() const
     }
 }
 
-// External C function for comparing two cpp_S_box objects
-extern "C"
-bool cpp_S_box_eq(const cpp_S_box & s1, const cpp_S_box & s2) {
-    return (s1 == s2);
-}
-
-// Fast equality check using direct memory comparison
-#include <cstring>
-extern "C"
-bool cpp_S_box_eq_fast(const cpp_S_box &a, const cpp_S_box &b) {
-    const std::vector<BinWord>& lutA = a.get_lut();
-    const std::vector<BinWord>& lutB = b.get_lut();
-    if (lutA.size() != lutB.size()) return false;
-    return memcmp(lutA.data(), lutB.data(), lutA.size() * sizeof(BinWord)) == 0;
-}
 
 // !SECTION! More sophisticated operations
 
