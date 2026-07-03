@@ -42,6 +42,7 @@ cdef extern from "../../cpp/core/s_box.hpp":
 # !SUBSECTION! Loading the cpp file
 cdef extern from "../../cpp/core/s_box.cpp":
     bool cpp_S_box_eq(const cpp_S_box & s1, const cpp_S_box & s2)
+    bool cpp_S_box_eq_fast(const cpp_S_box & s1, const cpp_S_box & s2)
 
 # !SUBSECTION! The cpp_S_box_fp class, header only hence no cpp file down below
 

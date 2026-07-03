@@ -3,6 +3,7 @@
 from sboxU.core.f2functions cimport *
 from sboxU.core.f2functions import ffe_to_int, to_bin, from_bin, i2f_and_f2i
 from sboxU.core.sbox.linearCasts import casts_from_field
+from sboxU.core.sbox.cython_functions cimport cpp_S_box_eq_fast
 
 from typing import Union
 
@@ -158,7 +159,10 @@ cdef class S_box:
     def __ne__(self, s) -> bool:
         return not self.__eq__(s)
 
-        
+    def cpp_eq(self, S_box other) -> bool:
+        """Fast internal equality check using direct memory comparison."""
+        return cpp_S_box_eq_fast(self.cpp_sb.get()[0], other.cpp_sb.get()[0])
+
     def __getitem__(self, BinWord x) -> BinWord:
         """Querying the S-box on a specific integer.
         
