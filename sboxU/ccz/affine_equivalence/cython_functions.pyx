@@ -11,6 +11,9 @@ from sboxU.core.f2functions import identity_F2AffineMap
 
 from cython.operator cimport dereference
 
+# Global cache for identity F2AffineMap for n=8 to avoid construction overhead
+_cached_identity_n8 = None
+
 
 # !SECTION! XOR equivalence
 
@@ -167,14 +170,21 @@ def affine_equivalence_permutations(f, g):
     # Fast path: object identity implies self-equivalence (avoids to_bytes() conversion)
     if sf is sg:
         n = sf.get_input_length()
-        identity = identity_F2AffineMap(n)
+        # Use cached identity map for n=8 if available, else construct
+        if n == 8 and _cached_identity_n8 is not None:
+            identity = _cached_identity_n8
+        else:
+            identity = identity_F2AffineMap(n)
         return [identity, 0, identity, 0]
 
     # Fast path for self-equivalence with different object instances: f == g => identity mapping is a solution
     # Use direct C++ memory comparison (cpp_eq) for speed instead of to_bytes() allocation + Python loop
     if sf.get_output_length() == sg.get_output_length() and sf.cpp_eq(sg):
         n = sf.get_input_length()
-        identity = identity_F2AffineMap(n)
+        if n == 8 and _cached_identity_n8 is not None:
+            identity = _cached_identity_n8
+        else:
+            identity = identity_F2AffineMap(n)
         return [identity, 0, identity, 0]
 
     # Quick filter: differential spectrum is an affine invariant for permutations
@@ -226,3 +236,6 @@ def affine_equivalence_permutations(f, g):
     B = B_f * B_g.inverse()
     a = A.inverse()(a)
     return [A, a, B, b]
+
+# Global identity map cache for n=8
+_cached_identity_n8 = identity_F2AffineMap(8)
