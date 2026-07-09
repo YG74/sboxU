@@ -14,9 +14,15 @@ LEguess::LEguess(const unsigned int _target_size) :
     min_unset(0),
     set_count(1) // initially only entry 0 is set
 {
-    // Initialize: set entry for 0,0
+    // B(0)=0 is forced for any linear permutation, so preset entry 0.
     is_set[0] = 1;
     partial_lut[0] = 0;
+    // Advance min_unset past the pinned entry: LEguessIterator seeds on
+    // min_u(), and when no constraints are added (F(0)==0 branch of
+    // cpp_linear_equivalence_permutations) it would otherwise try to re-guess
+    // the fixed entry 0 and never find a self-equivalence.
+    while ((min_unset < target_size) and is_set[min_unset])
+        min_unset++;
 }
 
 
