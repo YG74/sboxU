@@ -237,7 +237,7 @@ bool cpp_is_differential_uniformity_smaller_than(
         return cpp_is_differential_uniformity_smaller_than_u(s,u);
 }
 
-// Compare differential spectra of f and g with early exit
+// Compare differential spectra of f and g
 bool cpp_differential_spectrum_compare(const cpp_S_box &f, const cpp_S_box &g) {
     unsigned int n = f.input_space_size();
     std::vector<int> hist_f(n+1, 0);
@@ -251,12 +251,6 @@ bool cpp_differential_spectrum_compare(const cpp_S_box &f, const cpp_S_box &g) {
         for (unsigned int i = 0; i < row_g.size(); i++) {
             hist_g[row_g[i]]++;
         }
-        // Early exit: compare histograms
-        for (int c = 0; c <= n; c++) {
-            if (hist_f[c] != hist_g[c]) {
-                return false;
-            }
-        }
     }
-    return true;
+    return hist_f == hist_g;
 }
